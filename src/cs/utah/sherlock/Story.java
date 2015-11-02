@@ -8,8 +8,8 @@ import java.util.List;
  */
 public class Story {
     public static class Question {
-        private String id, question, answer;
-        private int difficulty;
+        public final String id, question, answer;
+        public final int difficulty;
 
         public Question(String id, String question, int difficulty) {
             this(id, question, difficulty, null);
@@ -33,8 +33,8 @@ public class Story {
         }
     }
 
-    private String headline, date, id, text;
-    private List<Question> questions;
+    public final String headline, date, id, text;
+    public final List<Question> questions;
 
     public Story(String headline, String date, String id, String text, List<Question> questions) {
         this.headline = headline;
@@ -44,7 +44,12 @@ public class Story {
         this.questions = questions;
     }
 
+    public List<Question> getQuestions() {
+        return questions;
+    }
+
     @Override
+
     public String toString() {
         return "Story{" +
                 "headline='" + headline + '\'' +
