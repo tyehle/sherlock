@@ -1,8 +1,6 @@
-HEADLINE: 
-DATE: 
+HEADLINE: Canada's Wartime Guests
+DATE: February 17, 1999
 STORYID: 1999-W08-3
-<HL>Canada's Wartime Guests</HL>
-<DL>February 17, 1999</DL>
 
 TEXT:
 

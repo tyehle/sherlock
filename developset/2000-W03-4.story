@@ -1,5 +1,5 @@
-HEADLINE: 
-DATE: 
+HEADLINE: Computer Eyes Help Blind Man See
+DATE: January 21, 2000
 STORYID: 2000-W03-4
 
 TEXT:
@@ -60,6 +60,3 @@ The minister says
 he hopes to have the new cigarette packages on store shelves by the end of the 
 year. He says tobacco companies that don't comply won't be selling their product 
 in Canada.
-<DOC domain="health|sciTech">
-<HL>Computer Eyes Help Blind Man See</HL>
-<DL>January 21, 2000</DL>

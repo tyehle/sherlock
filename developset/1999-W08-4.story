@@ -1,8 +1,6 @@
-HEADLINE: 
-DATE: 
+HEADLINE: Ottawa Police hurt in Kurdish Demonstrations
+DATE: February 18, 1999
 STORYID: 1999-W08-4
-<HL>Ottawa Police hurt in Kurdish Demonstrations</HL>
-<DL>February 18, 1999</DL>
 
 TEXT:
 
