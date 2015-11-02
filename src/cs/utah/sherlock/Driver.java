@@ -1,5 +1,7 @@
 package cs.utah.sherlock;
 
+import com.sun.org.apache.xpath.internal.SourceTree;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -88,6 +90,32 @@ public class Driver {
         return ids;
     }
 
+    public static String getAnswer(Story.Question question, Story story){
+
+        return "Canada";
+    }
+
+    public static String answerQuestions(Story story){
+        StringBuilder answer = new StringBuilder();
+
+        for(Story.Question question : story.questions){
+            answer.append("QuestionID: " + question.id + "\n");
+            answer.append("Answer: " + getAnswer(question, story) + "\n\n");
+        }
+
+        return answer.toString();
+    }
+
+    public static String generateAnswers(List<Story> stories){
+        StringBuilder answers = new StringBuilder();
+
+        for(Story story : stories){
+            answers.append(answerQuestions(story));
+        }
+
+        return answers.toString();
+    }
+
     public static void main(String[] args) {
         if(args.length < 1) {
             System.err.println("Expected input file");
@@ -103,6 +131,6 @@ public class Driver {
 
         List<Story> stories = readStories(directory, storyIDs);
 
-        System.out.println("found "+stories.size()+" stories");
+        System.out.println(generateAnswers(stories));
     }
 }
