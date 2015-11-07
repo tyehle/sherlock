@@ -11,18 +11,17 @@ public class Sherlock {
 
     public final Set<String> stopWords;
     public final List<Story> stories;
-    public final List<Set<String>> bagOfWords;
 
     public Sherlock(String stopWordsFile,  List<Story> stories ){
         this.stopWords = new HashSet<>(readLines(stopWordsFile));
         this.stories = stories;
-        this.bagOfWords = new ArrayList<>();
-        //this.bagOfWords = getBagOfWords(story);
     }
 
     public void processStories(){
+        List<Set<String>> bagOfWords;
+
         for(Story story : this.stories){
-            // do shit
+            bagOfWords = getBagOfWords(story);
         }
     }
 
@@ -31,7 +30,8 @@ public class Sherlock {
      * @param text
      * @return List of "sentences" (token list)
      */
-    public List<List<String>> tokenize(String text){
+    private List<List<String>> tokenize(String text){
+        List<List<String>> sentenceTokens = new ArrayList<>();
         // TODO: Stanford tokenizer stuff
         return null;
     }
@@ -40,12 +40,15 @@ public class Sherlock {
      * Generates a bag of words (set) for each sentence in the file (list)
      * @param story
      */
-    public void getBagOfWords(Story story){
+    private List<Set<String>> getBagOfWords(Story story){
+        List<Set<String>> bagOfWords = new ArrayList<>();
         List<List<String>> sentences = tokenize(story.text);
 
         for(List<String> sentence : sentences){
-            this.bagOfWords.add(new HashSet(sentence));
+            bagOfWords.add(new HashSet(sentence));
         }
+
+        return bagOfWords;
     }
 
     /***** HELPER FUNCTIONS *****/
@@ -55,7 +58,7 @@ public class Sherlock {
      * @param filename The name of the file to read
      * @return A list of all the lines in the file
      */
-    public static List<String> readLines(String filename) {
+    private static List<String> readLines(String filename) {
         ArrayList<String> out = new ArrayList<>();
         try(Scanner in  = new Scanner(new File(filename))) {
             while(in.hasNextLine()) {
