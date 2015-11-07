@@ -1,5 +1,7 @@
 package cs.utah.sherlock;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -44,10 +46,6 @@ public class Story {
         this.questions = questions;
     }
 
-    public List<Question> getQuestions() {
-        return questions;
-    }
-
     @Override
 
     public String toString() {
@@ -55,12 +53,8 @@ public class Story {
                 "headline='" + headline + '\'' +
                 ", date='" + date + '\'' +
                 ", id='" + id + '\'' +
-                ", text='" + text + '\'' +
                 ", questions=" + questions +
                 '}';
     }
 
-    public String getId() {
-        return id;
-    }
 }
