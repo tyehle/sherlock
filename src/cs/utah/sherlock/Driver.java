@@ -1,7 +1,5 @@
 package cs.utah.sherlock;
 
-import com.sun.org.apache.xpath.internal.SourceTree;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
