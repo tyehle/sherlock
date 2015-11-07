@@ -1,5 +1,5 @@
-HEADLINE: Computer Eyes Help Blind Man See
-DATE: January 21, 2000
+HEADLINE: 
+DATE: 
 STORYID: 2000-W03-4
 
 TEXT:
