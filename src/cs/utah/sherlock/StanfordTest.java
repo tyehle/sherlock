@@ -39,7 +39,7 @@ public class StanfordTest {
     public static void main(String[] args) throws Exception {
 
 //        String serializedClassifier = "classifiers/english.all.3class.distsim.crf.ser.gz";
-        String serializedClassifier = "stanford-ner/conll.distsim.iob2.crf.ser.gz";
+        String serializedClassifier = "ner-models/english.all.3class.nodistsim.crf.ser.gz";
 
         if (args.length > 0) {
             serializedClassifier = args[0];
