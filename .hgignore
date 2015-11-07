@@ -3,3 +3,5 @@ sytax: blob
 .idea/*
 out/*
 sherlock.iml
+
+lib/*
