@@ -1,4 +1,4 @@
-package cs.utah.sherlock;
+package cs.utah.sherlock.demos;
 
 import edu.stanford.nlp.ie.AbstractSequenceClassifier;
 import edu.stanford.nlp.ie.crf.*;
