@@ -1,6 +1,6 @@
 package cs.utah.sherlock;
 
-import edu.stanford.nlp.process.Stemmer;
+import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
@@ -66,7 +66,7 @@ public class Sherlock {
     private Set<String> getBagOfWords(List<CoreLabel> sentence) {
         //Set<CoreLabel> coreLabels = new HashSet<>(sentence);
         // *** Added stemming here ***
-        Set<String> bagOfWords = sentence.stream().map(word -> new Stemmer().stem(word.word())).collect(Collectors.toSet());
+        Set<String> bagOfWords = sentence.stream().map(word -> new Morphology().stem(word.word())).collect(Collectors.toSet());
 
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
