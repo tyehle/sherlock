@@ -32,17 +32,21 @@ public class Sherlock {
             List<CoreLabel> questionTokens = tokenizeSentence(question.question);
             Set<String> questionBag = getBagOfWords(questionTokens);
 
-            Set<String> bestBag = new HashSet<>();
+            int bestIntersectionSize = 0;
             String bestAnswer = "Canada";
             for(List<CoreLabel> sentence : textTokens){
                 Set<String> sentenceBag = getBagOfWords(sentence);
-                // Find the intersection of the questionBag and the sentenceBag
-                sentenceBag.retainAll(questionBag);
-                // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
 
-                if(sentenceBag.size() > bestBag.size()) {
-                    bestBag = sentenceBag;
+                // Find the intersection of the questionBag and the sentenceBag
+                Set<String> intersection = getBagOfWords(sentence);
+                intersection.retainAll(questionBag);
+
+                if(intersection.size() > bestIntersectionSize) {
+                    bestIntersectionSize = intersection.size();
                     bestAnswer = rebuildSentence(sentence);
+                }
+                else if (sentenceBag.size() == bestIntersectionSize) {
+                    // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
                 }
 
             }

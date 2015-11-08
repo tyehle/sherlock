@@ -110,14 +110,14 @@ public class Driver {
     public static String answerQuestions(Story story, Sherlock sherlock){
         StringBuilder answers = new StringBuilder();
 
-        for(Map.Entry<Story.Question, String> entry : sherlock.processStory(story).entrySet()){
-            Story.Question question = entry.getKey();
-            String answer = entry.getValue();
+        Map<Story.Question, String> answerKey = sherlock.processStory(story);
+
+        for(Story.Question question : story.questions) {
+            String answer = answerKey.get(question);
 
             answers.append("QuestionID: " + question.id + "\n");
             answers.append("Answer: " + answer + "\n\n");
         }
-
         return answers.toString();
     }
 
