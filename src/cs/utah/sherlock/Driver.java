@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 
@@ -88,27 +89,26 @@ public class Driver {
         return ids;
     }
 
-    public static String getAnswer(Story.Question question, Story story){
+    public static String answerQuestions(Story story, Sherlock sherlock){
+        StringBuilder answers = new StringBuilder();
 
-        return "Canada";
-    }
+        for(Map.Entry<Story.Question, String> entry : sherlock.processStory(story).entrySet()){
+            Story.Question question = entry.getKey();
+            String answer = entry.getValue();
 
-    public static String answerQuestions(Story story){
-        StringBuilder answer = new StringBuilder();
-
-        for(Story.Question question : story.questions){
-            answer.append("QuestionID: " + question.id + "\n");
-            answer.append("Answer: " + getAnswer(question, story) + "\n\n");
+            answers.append("QuestionID: " + question.id + "\n");
+            answers.append("Answer: " + answer + "\n\n");
         }
 
-        return answer.toString();
+        return answers.toString();
     }
 
     public static String generateAnswers(List<Story> stories){
         StringBuilder answers = new StringBuilder();
+        Sherlock sherlock = new Sherlock("stop-words.txt");
 
         for(Story story : stories){
-            answers.append(answerQuestions(story));
+            answers.append(answerQuestions(story, sherlock));
         }
 
         return answers.toString();
