@@ -1,12 +1,11 @@
 package cs.utah.sherlock;
 
+import org.apache.xpath.SourceTree;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -90,6 +89,24 @@ public class Driver {
         return ids;
     }
 
+    public static void alphebetizeManifest(String manifest){
+        List<String> strings = new ArrayList<>();
+        try (Scanner in = new Scanner(new File(manifest))) {
+            if(in.hasNextLine()) strings.add(new File(in.nextLine()).getCanonicalPath() + File.separator);
+            while(in.hasNextLine()) {
+                strings.add(in.nextLine());
+            }
+
+            Collections.sort(strings);
+
+            for(String s : strings)
+                System.out.println(s);
+        }
+        catch (IOException e) {
+            System.err.println(e.getMessage());
+        }
+    }
+
     public static String answerQuestions(Story story, Sherlock sherlock){
         StringBuilder answers = new StringBuilder();
 
@@ -131,5 +148,6 @@ public class Driver {
         List<Story> stories = readStories(directory, storyIDs);
 
         System.out.println(generateAnswers(stories));
+//        alphebetizeManifest("developset-manifest");
     }
 }
