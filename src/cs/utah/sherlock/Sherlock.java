@@ -1,54 +1,62 @@
 package cs.utah.sherlock;
 
+import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.ling.HasWord;
+import edu.stanford.nlp.process.CoreLabelTokenFactory;
+import edu.stanford.nlp.process.DocumentPreprocessor;
+import edu.stanford.nlp.process.PTBTokenizer;
+
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.StringReader;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * Created by Dasha on 11/7/2015.
+ * @author Tobin Yehle
+ * @author Dasha Pruss
  */
 public class Sherlock {
 
     public final Set<String> stopWords;
-    public final List<Story> stories;
 
-    public Sherlock(String stopWordsFile,  List<Story> stories ){
+    public Sherlock(String stopWordsFile){
         this.stopWords = new HashSet<>(readLines(stopWordsFile));
-        this.stories = stories;
     }
 
-    public void processStories(){
-        List<Set<String>> bagOfWords;
+    public void processStory(Story story) {
+        List<String> sentences = breakSentences(story.text);
+        List<List<CoreLabel>> textTokens = sentences.stream().map(this::tokenizeSentence).collect(Collectors.toList());
 
-        for(Story story : this.stories){
-            bagOfWords = getBagOfWords(story);
+        for(Story.Question question : story.questions) {
+            List<CoreLabel> questionTokens = tokenizeSentence(question.question);
+
+            // TODO: compare the question tokens to each sentence and pick one
         }
     }
 
     /**
      * Generates sentence tokens from the given corpus
-     * @param text
+     * @param document The document.
      * @return List of "sentences" (token list)
      */
-    private List<List<String>> tokenize(String text){
-        List<List<String>> sentenceTokens = new ArrayList<>();
-        // TODO: Stanford tokenizer stuff
-        return null;
+    private List<String> breakSentences(String document) {
+        return Arrays.asList(document.split("\\.|!|\\?"));
     }
 
-    /**
-     * Generates a bag of words (set) for each sentence in the file (list)
-     * @param story
-     */
-    private List<Set<String>> getBagOfWords(Story story){
-        List<Set<String>> bagOfWords = new ArrayList<>();
-        List<List<String>> sentences = tokenize(story.text);
+    private List<CoreLabel> tokenizeSentence(String sentence) {
+        return tokenizeString(sentence);
+    }
 
-        for(List<String> sentence : sentences){
-            bagOfWords.add(new HashSet(sentence));
+
+    public static List<CoreLabel> tokenizeString(String input) {
+        PTBTokenizer<CoreLabel> tokenizer = new PTBTokenizer<>(new StringReader(input),
+                new CoreLabelTokenFactory(), "invertible=true");
+        List<CoreLabel> out = new ArrayList<>();
+        while(tokenizer.hasNext()) {
+            out.add(tokenizer.next());
         }
-
-        return bagOfWords;
+        return out;
     }
 
     /***** HELPER FUNCTIONS *****/

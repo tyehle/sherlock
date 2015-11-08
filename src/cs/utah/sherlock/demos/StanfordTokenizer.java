@@ -8,12 +8,24 @@ import edu.stanford.nlp.process.PTBTokenizer;
 
 import java.io.FileNotFoundException;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * @author Tobin Yehle
  */
 public class StanfordTokenizer {
+
+    public static List<CoreLabel> tokenizeString(String input) {
+        PTBTokenizer<CoreLabel> tokenizer = new PTBTokenizer<>(new StringReader(input),
+                new CoreLabelTokenFactory(), "invertible=true");
+        List<CoreLabel> out = new ArrayList<>();
+        while(tokenizer.hasNext()) {
+            out.add(tokenizer.next());
+        }
+        return out;
+    }
+
     public static void main(String[] args) throws FileNotFoundException {
         String document = "This is a random-ass test sentence that doesn't keep anything\tsacred ! NOTHING!";
 
@@ -22,12 +34,8 @@ public class StanfordTokenizer {
         for (List<HasWord> sentence : dp) {
             System.out.println(sentence);
         }
+
         // option #2: By token
-        PTBTokenizer<CoreLabel> ptbt = new PTBTokenizer<>(new StringReader(document),
-                new CoreLabelTokenFactory(), "");
-        while (ptbt.hasNext()) {
-            CoreLabel label = ptbt.next();
-            System.out.println(label);
-        }
+        tokenizeString(document).stream().forEach(word -> System.out.print(word+"  "));
     }
 }
