@@ -1,7 +1,5 @@
 package cs.utah.sherlock;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -33,6 +31,29 @@ public class Story {
                     ", difficulty=" + difficulty +
                     '}';
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            Question question1 = (Question) o;
+
+            if (difficulty != question1.difficulty) return false;
+            if (id != null ? !id.equals(question1.id) : question1.id != null) return false;
+            if (question != null ? !question.equals(question1.question) : question1.question != null) return false;
+            return !(answer != null ? !answer.equals(question1.answer) : question1.answer != null);
+
+        }
+
+        @Override
+        public int hashCode() {
+            int result = id != null ? id.hashCode() : 0;
+            result = 31 * result + (question != null ? question.hashCode() : 0);
+            result = 31 * result + (answer != null ? answer.hashCode() : 0);
+            result = 31 * result + difficulty;
+            return result;
+        }
     }
 
     public final String headline, date, id, text;
@@ -57,4 +78,28 @@ public class Story {
                 '}';
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Story story = (Story) o;
+
+        if (headline != null ? !headline.equals(story.headline) : story.headline != null) return false;
+        if (date != null ? !date.equals(story.date) : story.date != null) return false;
+        if (id != null ? !id.equals(story.id) : story.id != null) return false;
+        if (text != null ? !text.equals(story.text) : story.text != null) return false;
+        return !(questions != null ? !questions.equals(story.questions) : story.questions != null);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = headline != null ? headline.hashCode() : 0;
+        result = 31 * result + (date != null ? date.hashCode() : 0);
+        result = 31 * result + (id != null ? id.hashCode() : 0);
+        result = 31 * result + (text != null ? text.hashCode() : 0);
+        result = 31 * result + (questions != null ? questions.hashCode() : 0);
+        return result;
+    }
 }
