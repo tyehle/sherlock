@@ -53,8 +53,9 @@ public class Driver {
             in.skip("\\n");
 
             StringBuilder textBuilder = new StringBuilder();
-            while(in.hasNext()) {
-                textBuilder.append(in.next());
+            while(in.hasNextLine()) {
+                textBuilder.append(in.nextLine());
+                textBuilder.append(" ");
             }
 
             boolean answersExists = new File(baseName+".answers").exists();
