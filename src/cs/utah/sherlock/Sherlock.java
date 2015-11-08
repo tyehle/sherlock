@@ -65,7 +65,8 @@ public class Sherlock {
 
     private Set<String> getBagOfWords(List<CoreLabel> sentence) {
         //Set<CoreLabel> coreLabels = new HashSet<>(sentence);
-        Set<String> bagOfWords = sentence.stream().map(word -> word.word()).collect(Collectors.toSet());
+        // *** Added stemming here ***
+        Set<String> bagOfWords = sentence.stream().map(word -> new Stemmer().stem(word.word())).collect(Collectors.toSet());
 
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
