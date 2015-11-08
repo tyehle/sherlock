@@ -4,6 +4,7 @@ import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
 import edu.stanford.nlp.process.PTBTokenizer;
+import edu.stanford.nlp.trees.WordStemmer;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -45,8 +46,14 @@ public class Sherlock {
                     bestIntersectionSize = intersection.size();
                     bestAnswer = rebuildSentence(sentence);
                 }
-                else if (sentenceBag.size() == bestIntersectionSize) {
+                else if (intersection.size() == bestIntersectionSize && bestIntersectionSize != 0) {
                     // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
+                    // For now prefer shorter sentences
+                    String newAnswer = rebuildSentence(sentence);
+                    if(newAnswer.length() < bestAnswer.length()) {
+                        bestIntersectionSize = intersection.size();
+                        bestAnswer = newAnswer;
+                    }
                 }
 
             }
@@ -56,7 +63,7 @@ public class Sherlock {
         return questionAnswers;
     }
 
-    private Set<String> getBagOfWords(List<CoreLabel> sentence){
+    private Set<String> getBagOfWords(List<CoreLabel> sentence) {
         //Set<CoreLabel> coreLabels = new HashSet<>(sentence);
         Set<String> bagOfWords = sentence.stream().map(word -> word.word()).collect(Collectors.toSet());
 

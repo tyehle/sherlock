@@ -1,10 +1,17 @@
 #!/bin/bash
 
-#if [[ $# = 1 ]]
-#then
-#    name=$1
+#verbose=false
+#
+#if [[ $1 = "-v" ]]; then
+#    verbose=true
+#fi
+#
 #else
 #    name="developset"
 #fi
 
-perl score-answers.pl <(java -cp out/production/sherlock:lib/* cs.utah.sherlock.Driver developset-manifest) "developset-answers" | tail -n 11
+java -cp out/production/sherlock:lib/* cs.utah.sherlock.Driver developset-manifest > answers
+
+perl score-answers.pl answers "developset-answers" | tail -n 11
+
+rm answers
