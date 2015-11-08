@@ -1,17 +1,30 @@
 #!/bin/bash
 
-#verbose=false
-#
-#if [[ $1 = "-v" ]]; then
-#    verbose=true
-#fi
-#
-#else
-#    name="developset"
-#fi
+verbose=false
+name="developset"
 
-java -cp out/production/sherlock:lib/* cs.utah.sherlock.Driver developset-manifest > answers
+while getopts ":n:v" opt; do
+  case $opt in
+    n)
+      name=$OPTARG
+      ;;
+    v)
+      verbose=true
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG was ignored" >&2
+      ;;
+  esac
+done
 
-perl score-answers.pl answers "developset-answers" | tail -n 11
+
+java -cp out/production/sherlock:lib/* cs.utah.sherlock.Driver "$name-manifest" > answers
+
+if [[ $verbose = true ]]; then
+    perl score-answers.pl answers "$name-answers"
+else
+    perl score-answers.pl answers "$name-answers" | tail -n 11
+fi
 
 rm answers
+
