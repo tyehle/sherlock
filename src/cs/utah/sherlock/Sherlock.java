@@ -1,9 +1,8 @@
 package cs.utah.sherlock;
 
+import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
-import edu.stanford.nlp.ling.HasWord;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
-import edu.stanford.nlp.process.DocumentPreprocessor;
 import edu.stanford.nlp.process.PTBTokenizer;
 
 import java.io.File;
@@ -43,7 +42,7 @@ public class Sherlock {
 
                 if(sentenceBag.size() > bestBag.size()) {
                     bestBag = sentenceBag;
-                    bestAnswer = sentence.stream().map(word -> word.word()).collect(Collectors.joining());
+                    bestAnswer = rebuildSentence(sentence);
                 }
 
             }
@@ -74,6 +73,22 @@ public class Sherlock {
 
     private List<CoreLabel> tokenizeSentence(String sentence) {
         return tokenizeString(sentence);
+    }
+
+    private String rebuildSentence(List<CoreLabel> sentence) {
+        StringBuilder out = new StringBuilder();
+
+        out.append(sentence.get(0).get(CoreAnnotations.BeforeAnnotation.class));
+
+        for(CoreLabel label : sentence) {
+            String originalWord = label.get(CoreAnnotations.OriginalTextAnnotation.class);
+            String spaceAfter = label.get(CoreAnnotations.AfterAnnotation.class);
+
+            out.append(originalWord);
+            out.append(spaceAfter);
+        }
+
+        return out.toString();
     }
 
 
