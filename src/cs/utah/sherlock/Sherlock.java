@@ -24,15 +24,43 @@ public class Sherlock {
         this.stopWords = new HashSet<>(readLines(stopWordsFile));
     }
 
-    public void processStory(Story story) {
+    public Map<Story.Question, String> processStory(Story story) {
+        Map<Story.Question, String> questionAnswers = new HashMap<>();
         List<String> sentences = breakSentences(story.text);
         List<List<CoreLabel>> textTokens = sentences.stream().map(this::tokenizeSentence).collect(Collectors.toList());
 
         for(Story.Question question : story.questions) {
             List<CoreLabel> questionTokens = tokenizeSentence(question.question);
+            Set<String> questionBag = getBagOfWords(questionTokens);
 
-            // TODO: compare the question tokens to each sentence and pick one
+            Set<String> bestBag = new HashSet<>();
+            String bestAnswer = "Canada";
+            for(List<CoreLabel> sentence : textTokens){
+                Set<String> sentenceBag = getBagOfWords(sentence);
+                // Find the intersection of the questionBag and the sentenceBag
+                sentenceBag.retainAll(questionBag);
+                // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
+
+                if(sentenceBag.size() > bestBag.size()) {
+                    bestBag = sentenceBag;
+                    bestAnswer = sentence.stream().map(word -> word.word()).collect(Collectors.joining());
+                }
+
+            }
+            questionAnswers.put(question, bestAnswer);
         }
+
+        return questionAnswers;
+    }
+
+    private Set<String> getBagOfWords(List<CoreLabel> sentence){
+        //Set<CoreLabel> coreLabels = new HashSet<>(sentence);
+        Set<String> bagOfWords = sentence.stream().map(word -> word.word()).collect(Collectors.toSet());
+
+        // Remove all stop words from the bag
+        bagOfWords.removeAll(stopWords);
+
+        return bagOfWords;
     }
 
     /**
