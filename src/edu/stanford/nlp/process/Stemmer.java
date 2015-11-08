@@ -1,4 +1,4 @@
-package cs.utah.sherlock;
+package edu.stanford.nlp.process;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.function.Function;
 
 import edu.stanford.nlp.ling.Word;
-import edu.stanford.nlp.process.PTBTokenizer;
 
 /**
  * Stemmer, implementing the Porter Stemming Algorithm
