@@ -1,10 +1,10 @@
 package cs.utah.sherlock;
 
+import edu.stanford.nlp.process.Stemmer;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
 import edu.stanford.nlp.process.PTBTokenizer;
-import edu.stanford.nlp.trees.WordStemmer;
 
 import java.io.File;
 import java.io.FileNotFoundException;
