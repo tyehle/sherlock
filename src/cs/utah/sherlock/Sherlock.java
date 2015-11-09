@@ -1,10 +1,12 @@
 package cs.utah.sherlock;
 
-import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.parser.lexparser.LexicalizedParser;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
+import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.process.PTBTokenizer;
+import edu.stanford.nlp.trees.Tree;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -34,27 +36,43 @@ public class Sherlock {
         Map<Story.Question, String> questionAnswers = new HashMap<>();
 
         List<String> sentences = breakSentences(story.text);
+
+        // Create necessary objects for parsing
+//        String parserModel = "edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz";
+//        LexicalizedParser lp = LexicalizedParser.loadModel(parserModel);
+
         List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
 
         for(Story.Question question : story.questions) {
             List<CoreLabel> questionTokens = tokenizeString(question.question);
+
+            // Get NPs using sentence parsing
+//            List<Tree> questionNPs = getNounPhrases(lp.apply(questionTokens));
+            // ArrayList<Word>
+//            questionNPs.get(1).yieldWords();
+            //parseQuestion.pennPrint();
+
             Set<String> questionBag = getBagOfWords(questionTokens, true);
 
             int bestIntersectionSize = 0;
             String bestAnswer = "Canada";
-            for(List<CoreLabel> sentence : textTokens) {
+            for(List<CoreLabel> sentenceTokens : textTokens) {
+                // Get NPs using sentence parsing
+//                List<Tree> sentenceNPs = getNounPhrases(lp.apply(sentenceTokens));
+                //parseSentence.pennPrint();
+
                 // Find the intersection of the questionBag and the sentenceBag
-                Set<String> intersection = getBagOfWords(sentence, true);
+                Set<String> intersection = getBagOfWords(sentenceTokens, true);
                 intersection.retainAll(questionBag);
 
                 if(intersection.size() > bestIntersectionSize) {
                     bestIntersectionSize = intersection.size();
-                    bestAnswer = rebuildSentence(sentence);
+                    bestAnswer = rebuildSentence(sentenceTokens);
                 }
                 else if (intersection.size() == bestIntersectionSize && bestIntersectionSize != 0) {
                     // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
                     // For now prefer shorter sentences
-                    String newAnswer = rebuildSentence(sentence);
+                    String newAnswer = rebuildSentence(sentenceTokens);
                     if(newAnswer.length() < bestAnswer.length()) {
                         bestIntersectionSize = intersection.size();
                         bestAnswer = newAnswer;
@@ -66,6 +84,17 @@ public class Sherlock {
         }
 
         return questionAnswers;
+    }
+
+    private List<Tree> getNounPhrases(Tree parent)
+    {
+        List<Tree> nounPhrases = parent.stream().filter(child -> child.label().value().equals("NP")).collect(Collectors.toList());
+
+//        for (Tree child : parent)
+//            if(child.label().value().equals("NP"))
+//                nounPhrases.add(child);
+
+        return nounPhrases;
     }
 
     /**
@@ -151,5 +180,4 @@ public class Sherlock {
         }
         return out;
     }
-
 }
