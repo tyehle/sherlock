@@ -1,16 +1,17 @@
 package cs.utah.sherlock;
 
-import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.parser.lexparser.LexicalizedParser;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
+import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.process.PTBTokenizer;
+import edu.stanford.nlp.trees.Tree;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.StringReader;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -28,27 +29,45 @@ public class Sherlock {
     public Map<Story.Question, String> processStory(Story story) {
         Map<Story.Question, String> questionAnswers = new HashMap<>();
         List<String> sentences = breakSentences(story.text);
-        List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
+
+        // Create necessary objects for parsing
+        String parserModel = "edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz";
+        LexicalizedParser lp = LexicalizedParser.loadModel(parserModel);
+
+        List<List<CoreLabel>> textTokens = sentences.stream().map(this::tokenizeSentence).collect(Collectors.toList());
 
         for(Story.Question question : story.questions) {
-            List<CoreLabel> questionTokens = tokenizeString(question.question);
-            Set<String> questionBag = getBagOfWords(questionTokens, true);
+            List<CoreLabel> questionTokens = tokenizeSentence(question.question);
+
+            // Get NPs using sentence parsing
+            List<Tree> questionNPs = getNounPhrases(lp.apply(questionTokens));
+            // ArrayList<Word>
+            questionNPs.get(1).yieldWords();
+            //parseQuestion.pennPrint();
+
+            Set<String> questionBag = getBagOfWords(questionTokens);
 
             int bestIntersectionSize = 0;
             String bestAnswer = "Canada";
-            for(List<CoreLabel> sentence : textTokens) {
+            for(List<CoreLabel> sentenceTokens : textTokens){
+                Set<String> sentenceBag = getBagOfWords(sentenceTokens);
+
+                // Get NPs using sentence parsing
+                List<Tree> sentenceNPs = getNounPhrases(lp.apply(sentenceTokens));
+                //parseSentence.pennPrint();
+
                 // Find the intersection of the questionBag and the sentenceBag
-                Set<String> intersection = getBagOfWords(sentence, true);
+                Set<String> intersection = getBagOfWords(sentenceTokens);
                 intersection.retainAll(questionBag);
 
                 if(intersection.size() > bestIntersectionSize) {
                     bestIntersectionSize = intersection.size();
-                    bestAnswer = rebuildSentence(sentence);
+                    bestAnswer = rebuildSentence(sentenceTokens);
                 }
                 else if (intersection.size() == bestIntersectionSize && bestIntersectionSize != 0) {
                     // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
                     // For now prefer shorter sentences
-                    String newAnswer = rebuildSentence(sentence);
+                    String newAnswer = rebuildSentence(sentenceTokens);
                     if(newAnswer.length() < bestAnswer.length()) {
                         bestIntersectionSize = intersection.size();
                         bestAnswer = newAnswer;
@@ -62,18 +81,21 @@ public class Sherlock {
         return questionAnswers;
     }
 
-    /**
-     * Turns a list of tokens into a set of strings.
-     * @param sentence The tokens to bag
-     * @param stem If the words in the bag should be the stems of the original words
-     * @return the bag of words
-     */
-    private Set<String> getBagOfWords(List<CoreLabel> sentence, boolean stem) {
-        //Set<CoreLabel> coreLabels = new HashSet<>(sentence);
+    private List<Tree> getNounPhrases(Tree parent)
+    {
+        List<Tree> nounPhrases = parent.stream().filter(child -> child.label().value().equals("NP")).collect(Collectors.toList());
 
-        Morphology morph = new Morphology();
-        Function<CoreLabel, String> extractor = stem ? word -> morph.stem(word.word()) : CoreLabel::word;
-        Set<String> bagOfWords = sentence.stream().map(extractor).collect(Collectors.toSet());
+//        for (Tree child : parent)
+//            if(child.label().value().equals("NP"))
+//                nounPhrases.add(child);
+
+        return nounPhrases;
+    }
+
+    private Set<String> getBagOfWords(List<CoreLabel> sentence) {
+        //Set<CoreLabel> coreLabels = new HashSet<>(sentence);
+        // *** Added stemming here ***
+        Set<String> bagOfWords = sentence.stream().map(word -> new Morphology().stem(word.word())).collect(Collectors.toSet());
 
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
@@ -81,24 +103,20 @@ public class Sherlock {
         return bagOfWords;
     }
 
-    /***** HELPER FUNCTIONS *****/
-
     /**
      * Generates sentence tokens from the given corpus
      * @param document The document.
      * @return List of "sentences" (token list)
      */
-    public static List<String> breakSentences(String document) {
+    private List<String> breakSentences(String document) {
         return Arrays.asList(document.split("\\.|!|\\?"));
     }
 
-    /**
-     * Rebuilds a sentence from a list of tokens.
-     * This requires the tokens to have been tokenized with the invertible flag
-     * @param sentence The list of tokens to reconstruct
-     * @return The sentence the list of tokens came from
-     */
-    public static String rebuildSentence(List<CoreLabel> sentence) {
+    private List<CoreLabel> tokenizeSentence(String sentence) {
+        return tokenizeString(sentence);
+    }
+
+    private String rebuildSentence(List<CoreLabel> sentence) {
         StringBuilder out = new StringBuilder();
 
         out.append(sentence.get(0).get(CoreAnnotations.BeforeAnnotation.class));
@@ -114,11 +132,7 @@ public class Sherlock {
         return out.toString();
     }
 
-    /**
-     * Builds a list of tokens from a string of input.
-     * @param input The string to tokenize
-     * @return The list of tokens
-     */
+
     public static List<CoreLabel> tokenizeString(String input) {
         PTBTokenizer<CoreLabel> tokenizer = new PTBTokenizer<>(new StringReader(input),
                 new CoreLabelTokenFactory(), "invertible=true");
@@ -128,6 +142,8 @@ public class Sherlock {
         }
         return out;
     }
+
+    /***** HELPER FUNCTIONS *****/
 
     /**
      * Reads lines from a file
