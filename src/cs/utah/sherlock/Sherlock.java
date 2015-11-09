@@ -38,8 +38,8 @@ public class Sherlock {
         List<String> sentences = breakSentences(story.text);
 
         // Create necessary objects for parsing
-//        String parserModel = "edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz";
-//        LexicalizedParser lp = LexicalizedParser.loadModel(parserModel);
+        String parserModel = "parser-models/englishPCFG.ser.gz";
+        LexicalizedParser lp = LexicalizedParser.loadModel(parserModel);
 
         List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
 
@@ -47,9 +47,9 @@ public class Sherlock {
             List<CoreLabel> questionTokens = tokenizeString(question.question);
 
             // Get NPs using sentence parsing
-//            List<Tree> questionNPs = getNounPhrases(lp.apply(questionTokens));
+            List<Tree> questionNPs = getNounPhrases(lp.apply(questionTokens));
             // ArrayList<Word>
-//            questionNPs.get(1).yieldWords();
+            //questionNPs.get(1).yieldWords();
             //parseQuestion.pennPrint();
 
             Set<String> questionBag = getBagOfWords(questionTokens, true);
@@ -58,7 +58,7 @@ public class Sherlock {
             String bestAnswer = "Canada";
             for(List<CoreLabel> sentenceTokens : textTokens) {
                 // Get NPs using sentence parsing
-//                List<Tree> sentenceNPs = getNounPhrases(lp.apply(sentenceTokens));
+                List<Tree> sentenceNPs = getNounPhrases(lp.apply(sentenceTokens));
                 //parseSentence.pennPrint();
 
                 // Find the intersection of the questionBag and the sentenceBag
