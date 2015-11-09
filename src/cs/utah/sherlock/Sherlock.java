@@ -21,12 +21,18 @@ public class Sherlock {
 
     public final Set<String> stopWords;
 
-    public Sherlock(String stopWordsFile){
+    public Sherlock(String stopWordsFile) {
         this.stopWords = new HashSet<>(readLines(stopWordsFile));
     }
 
+    /**
+     * Answers the the questions about a story.
+     * @param story The story to answer questions about.
+     * @return A map of the questions to the answers.
+     */
     public Map<Story.Question, String> processStory(Story story) {
         Map<Story.Question, String> questionAnswers = new HashMap<>();
+
         List<String> sentences = breakSentences(story.text);
         List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
 

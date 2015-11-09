@@ -89,7 +89,7 @@ public class Driver {
         return ids;
     }
 
-    public static void alphabetizeManifest(String manifest){
+    public static void alphabetizeManifest(String manifest) {
         List<String> strings = new ArrayList<>();
         try (Scanner in = new Scanner(new File(manifest))) {
             if(in.hasNextLine()) strings.add(new File(in.nextLine()).getCanonicalPath() + File.separator);
