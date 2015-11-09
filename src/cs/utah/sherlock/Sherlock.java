@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.StringReader;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -27,19 +28,17 @@ public class Sherlock {
     public Map<Story.Question, String> processStory(Story story) {
         Map<Story.Question, String> questionAnswers = new HashMap<>();
         List<String> sentences = breakSentences(story.text);
-        List<List<CoreLabel>> textTokens = sentences.stream().map(this::tokenizeSentence).collect(Collectors.toList());
+        List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
 
         for(Story.Question question : story.questions) {
-            List<CoreLabel> questionTokens = tokenizeSentence(question.question);
-            Set<String> questionBag = getBagOfWords(questionTokens);
+            List<CoreLabel> questionTokens = tokenizeString(question.question);
+            Set<String> questionBag = getBagOfWords(questionTokens, true);
 
             int bestIntersectionSize = 0;
             String bestAnswer = "Canada";
-            for(List<CoreLabel> sentence : textTokens){
-                Set<String> sentenceBag = getBagOfWords(sentence);
-
+            for(List<CoreLabel> sentence : textTokens) {
                 // Find the intersection of the questionBag and the sentenceBag
-                Set<String> intersection = getBagOfWords(sentence);
+                Set<String> intersection = getBagOfWords(sentence, true);
                 intersection.retainAll(questionBag);
 
                 if(intersection.size() > bestIntersectionSize) {
@@ -63,10 +62,18 @@ public class Sherlock {
         return questionAnswers;
     }
 
-    private Set<String> getBagOfWords(List<CoreLabel> sentence) {
+    /**
+     * Turns a list of tokens into a set of strings.
+     * @param sentence The tokens to bag
+     * @param stem If the words in the bag should be the stems of the original words
+     * @return the bag of words
+     */
+    private Set<String> getBagOfWords(List<CoreLabel> sentence, boolean stem) {
         //Set<CoreLabel> coreLabels = new HashSet<>(sentence);
-        // *** Added stemming here ***
-        Set<String> bagOfWords = sentence.stream().map(word -> new Morphology().stem(word.word())).collect(Collectors.toSet());
+
+        Morphology morph = new Morphology();
+        Function<CoreLabel, String> extractor = stem ? word -> morph.stem(word.word()) : CoreLabel::word;
+        Set<String> bagOfWords = sentence.stream().map(extractor).collect(Collectors.toSet());
 
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
@@ -74,20 +81,24 @@ public class Sherlock {
         return bagOfWords;
     }
 
+    /***** HELPER FUNCTIONS *****/
+
     /**
      * Generates sentence tokens from the given corpus
      * @param document The document.
      * @return List of "sentences" (token list)
      */
-    private List<String> breakSentences(String document) {
+    public static List<String> breakSentences(String document) {
         return Arrays.asList(document.split("\\.|!|\\?"));
     }
 
-    private List<CoreLabel> tokenizeSentence(String sentence) {
-        return tokenizeString(sentence);
-    }
-
-    private String rebuildSentence(List<CoreLabel> sentence) {
+    /**
+     * Rebuilds a sentence from a list of tokens.
+     * This requires the tokens to have been tokenized with the invertible flag
+     * @param sentence The list of tokens to reconstruct
+     * @return The sentence the list of tokens came from
+     */
+    public static String rebuildSentence(List<CoreLabel> sentence) {
         StringBuilder out = new StringBuilder();
 
         out.append(sentence.get(0).get(CoreAnnotations.BeforeAnnotation.class));
@@ -103,7 +114,11 @@ public class Sherlock {
         return out.toString();
     }
 
-
+    /**
+     * Builds a list of tokens from a string of input.
+     * @param input The string to tokenize
+     * @return The list of tokens
+     */
     public static List<CoreLabel> tokenizeString(String input) {
         PTBTokenizer<CoreLabel> tokenizer = new PTBTokenizer<>(new StringReader(input),
                 new CoreLabelTokenFactory(), "invertible=true");
@@ -113,8 +128,6 @@ public class Sherlock {
         }
         return out;
     }
-
-    /***** HELPER FUNCTIONS *****/
 
     /**
      * Reads lines from a file
