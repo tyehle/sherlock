@@ -133,7 +133,7 @@ public class Sherlock {
      * @param sentence The list of tokens to reconstruct
      * @return The sentence the list of tokens came from
      */
-    public String rebuildSentence(List<CoreLabel> sentence) {
+    public static String rebuildSentence(List<CoreLabel> sentence) {
         StringBuilder out = new StringBuilder();
 
         out.append(sentence.get(0).get(CoreAnnotations.BeforeAnnotation.class));
@@ -142,10 +142,8 @@ public class Sherlock {
             String originalWord = label.get(CoreAnnotations.OriginalTextAnnotation.class);
             String spaceAfter = label.get(CoreAnnotations.AfterAnnotation.class);
 
-            if(stopWords.contains(originalWord)) {
-                out.append(originalWord);
-                out.append(spaceAfter);
-            }
+            out.append(originalWord);
+            out.append(spaceAfter);
         }
 
         return out.toString();
