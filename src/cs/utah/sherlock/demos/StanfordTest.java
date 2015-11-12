@@ -155,11 +155,12 @@ public class StanfordTest {
 
             // This prints out all the details of what is stored for each token
             int i = 0;
-            for (String str : example) {
-                for (List<CoreLabel> lcl : classifier.classify(str)) {
-                    for (CoreLabel cl : lcl) {
+            for (String sentence : example) {
+                for (List<CoreLabel> sentenceTokens : classifier.classify(sentence)) {
+                    for (CoreLabel word : sentenceTokens) {
                         System.out.print(i++ + ": ");
-                        System.out.println(cl.toShorterString());
+                        System.out.print(word.get(CoreAnnotations.AnswerAnnotation.class) + ": ");
+                        System.out.println(word.toShorterString());
                     }
                 }
             }
