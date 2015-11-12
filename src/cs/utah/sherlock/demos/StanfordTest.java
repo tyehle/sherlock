@@ -39,7 +39,7 @@ public class StanfordTest {
     public static void main(String[] args) throws Exception {
 
 //        String serializedClassifier = "classifiers/english.all.3class.distsim.crf.ser.gz";
-        String serializedClassifier = "ner-models/english.muc.7class.distsim.crf.ser.gz";
+        String serializedClassifier = "ner-models/english.all.3class.nodistsim.crf.ser.gz";
 
         if (args.length > 0) {
             serializedClassifier = args[0];
@@ -106,15 +106,12 @@ public class StanfordTest {
              assignments and an n-best list of classifications with probabilities.
           */
 
-            String[] example = {"Principal Betty Jean Aucoin says the club is a first for a Nova Scotia\n" +
-                    "public school. She says the school took it on itself to provide a\n" +
-                    "service needed in Liverpool.\n"};
+            String[] example = {"Good afternoon Rajat Raina, how are you today?",
+                    "I go to school at Stanford University, which is located in California."};
             for (String str : example) {
                 System.out.println(classifier.classifyToString(str));
             }
             System.out.println("---");
-
-            System.exit(0);
 
             for (String str : example) {
                 // This one puts in spaces and newlines between tokens, so just print not println.
@@ -158,11 +155,12 @@ public class StanfordTest {
 
             // This prints out all the details of what is stored for each token
             int i = 0;
-            for (String str : example) {
-                for (List<CoreLabel> lcl : classifier.classify(str)) {
-                    for (CoreLabel cl : lcl) {
+            for (String sentence : example) {
+                for (List<CoreLabel> sentenceTokens : classifier.classify(sentence)) {
+                    for (CoreLabel word : sentenceTokens) {
                         System.out.print(i++ + ": ");
-                        System.out.println(cl.toShorterString());
+                        System.out.print(word.get(CoreAnnotations.AnswerAnnotation.class) + ": ");
+                        System.out.println(word.toShorterString());
                     }
                 }
             }
