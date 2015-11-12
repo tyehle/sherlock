@@ -4,14 +4,11 @@ import edu.stanford.nlp.ie.AbstractSequenceClassifier;
 import edu.stanford.nlp.ie.crf.CRFClassifier;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
-import edu.stanford.nlp.ling.Word;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
 import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.process.PTBTokenizer;
 import edu.stanford.nlp.trees.Tree;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.*;
@@ -27,15 +24,16 @@ public class Sherlock {
     public final Set<String> stopWords;
     private AbstractSequenceClassifier<CoreLabel> ner;
 
-    public Sherlock(String stopWordsFile) {
-        try {
-            ner = CRFClassifier.getClassifier("ner-models/english.muc.7class.distsim.crf.ser.gz");
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        this.stopWords = new HashSet<>(readLines(stopWordsFile));
+    private Map<String, Set<String>> nerFilter;
+
+    public Sherlock(String stopWordsFile, String nerModelFile) throws IOException, ClassNotFoundException {
+        ner = CRFClassifier.getClassifier(nerModelFile);
+
+        this.stopWords = new HashSet<>(Util.readLines(stopWordsFile));
+
+        // build the ner filter
+        nerFilter = Util.mapOF(Util.pairOf("who", Util.setOf("PERSON", "ORGANIZATION")),
+                               Util.pairOf("where", Util.setOf("LOCATION", "ORGANIZATION")));
     }
 
 
@@ -48,91 +46,73 @@ public class Sherlock {
         Map<Story.Question, String> questionAnswers = new HashMap<>();
 
         List<String> sentences = breakSentences(story.text);
-
-        // Create necessary objects for parsing
-//        String parserModel = "parser-models/englishPCFG.ser.gz";
-//        LexicalizedParser lp = LexicalizedParser.loadModel(parserModel);
-
         List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
 
+        // answer each question
         for(Story.Question question : story.questions) {
             List<CoreLabel> questionTokens = tokenizeString(question.question);
-            boolean who = questionTokens.get(0).word().toLowerCase().equals("who");
-            boolean where = questionTokens.get(0).word().toLowerCase().equals("where");
+            String questionType = questionTokens.get(0).word().toLowerCase();
+
+            // ignore the first word of the question when doing bagging
             questionTokens.remove(0);
 
-            // Get NPs using sentence parsing
-//            List<Tree> questionNPs = getNounPhrases(lp.apply(questionTokens));
-            // ArrayList<Word>
-            //questionNPs.get(1).yieldWords();
-            //parseQuestion.pennPrint();
+            List<CoreLabel> bestSentence = findBestByBagging(questionTokens, textTokens);
 
-            Set<String> questionBag = getBagOfWords(questionTokens, true);
+            ner.classify(bestSentence);
+            List<CoreLabel> filtered = applyNERFilter(questionType, bestSentence);
+            bestSentence = filtered.size() > 0 ? filtered : bestSentence;
 
-            int bestIntersectionSize = 0;
-            List<CoreLabel> bestAnswer = new ArrayList<>();
-            for(List<CoreLabel> sentenceTokens : textTokens) {
-                // Get NPs using sentence parsing
-//                List<Tree> sentenceNPs = getNounPhrases(lp.apply(sentenceTokens));
-                //parseSentence.pennPrint();
-
-                sentenceTokens = ner.classify(sentenceTokens);
-
-                // Find the intersection of the questionBag and the sentenceBag
-                Set<String> intersection = getBagOfWords(sentenceTokens, true);
-                intersection.retainAll(questionBag);
-
-                if(intersection.size() > bestIntersectionSize) {
-                    bestIntersectionSize = intersection.size();
-                    //bestAnswer = rebuildSentence(sentenceTokens);
-                    bestAnswer = sentenceTokens;
-                }
-                else if (intersection.size() == bestIntersectionSize && bestIntersectionSize != 0) {
-                    // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
-                    // For now prefer shorter sentences
-                    //String newAnswer = rebuildSentence(sentenceTokens);
-                    if(sentenceTokens.size() < bestAnswer.size()) {
-                        bestIntersectionSize = intersection.size();
-                        bestAnswer = sentenceTokens;
-                    }
-                }
-
-            }
-            if(who){
-                //System.out.println("Entered WHO block");
-                // Filter out only the 'Person' portions of the sentence
-                List<CoreLabel> newBest = new ArrayList<>();
-                for(CoreLabel word : bestAnswer){
-                    // Only add words that are people or organizations according to Stanford's NER
-                    String annotation = word.get(CoreAnnotations.AnswerAnnotation.class);
-                    if(annotation.equals("PERSON") || annotation.equals("ORGANIZATION")) {
-                        newBest.add(word);
-                        //System.out.println("Matched word: " + annotation + " " + word);
-                    }
-                }
-                if(newBest.size() > 0)
-                    bestAnswer = newBest;
-            }
-            else if(where){
-                //System.out.println("Entered WHO block");
-                // Filter out only the 'Person' portions of the sentence
-                List<CoreLabel> newBest = new ArrayList<>();
-                for(CoreLabel word : bestAnswer){
-                    // Only add words that are people or organizations according to Stanford's NER
-                    String annotation = word.get(CoreAnnotations.AnswerAnnotation.class);
-                    if(annotation.equals("LOCATION") || annotation.equals("ORGANIZATION")) {
-                        newBest.add(word);
-                        //System.out.println("Matched word: " + annotation + " " + word);
-                    }
-                }
-                if(newBest.size() > 0)
-                    bestAnswer = newBest;
-            }
-
-            questionAnswers.put(question, rebuildSentence(bestAnswer));
+            questionAnswers.put(question, rebuildSentence(bestSentence));
         }
 
         return questionAnswers;
+    }
+
+    /**
+     * Finds the best sentence in the document by comparing bags of words in the question to bags of words of each
+     * sentence.
+     * @param question The question to compare with
+     * @param sentences All the sentences in the document
+     * @return The best sentence in the document
+     */
+    private List<CoreLabel> findBestByBagging(List<CoreLabel> question, List<List<CoreLabel>> sentences) {
+        Set<String> questionBag = getBagOfWords(question);
+
+        int bestIntersectionSize = 0;
+        List<CoreLabel> bestAnswer = Util.listOf();
+
+        for(List<CoreLabel> sentence : sentences) {
+            Set<String> intersection = getBagOfWords(sentence);
+            intersection.retainAll(questionBag);
+
+            // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
+            // For now prefer shorter sentences
+            if(intersection.size() > bestIntersectionSize ||
+                    (intersection.size() == bestIntersectionSize && sentence.size() < bestAnswer.size())) {
+                bestAnswer = sentence;
+                bestIntersectionSize = intersection.size();
+            }
+        }
+
+        return bestAnswer;
+    }
+
+    /**
+     * Applies a filter to a sentence based on the NER tags of the tokens. Does nothing if the given key was not found.
+     * @param key The key to use when looking for an NER filter
+     * @param sentence The sentence to filter
+     * @return All the words matching the allowed annotations, or the sentence if the key was not valid
+     */
+    private List<CoreLabel> applyNERFilter(String key, List<CoreLabel> sentence) {
+        if(nerFilter.containsKey(key)) {
+            return sentence.stream().filter(token -> {
+                String annotation = token.get(CoreAnnotations.AnswerAnnotation.class);
+                return nerFilter.get(key).contains(annotation);
+            }).collect(Collectors.toList());
+        }
+        else {
+            return sentence;
+        }
     }
 
     private List<Tree> getNounPhrases(Tree parent)
@@ -148,15 +128,12 @@ public class Sherlock {
     /**
      * Turns a list of tokens into a set of strings.
      * @param sentence The tokens to bag
-     * @param stem If the words in the bag should be the stems of the original words
      * @return the bag of words
      */
-    private Set<String> getBagOfWords(List<CoreLabel> sentence, boolean stem) {
-        //Set<CoreLabel> coreLabels = new HashSet<>(sentence);
-
+    private Set<String> getBagOfWords(List<CoreLabel> sentence) {
         Morphology morph = new Morphology();
-        Function<CoreLabel, String> extractor = stem ? word -> morph.stem(word.word()) : CoreLabel::word;
-        Set<String> bagOfWords = sentence.stream().map(extractor).collect(Collectors.toSet());
+        Function<CoreLabel, String> stemmer = word -> morph.stem(word.word());
+        Set<String> bagOfWords = sentence.stream().map(stemmer).collect(Collectors.toSet());
 
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
@@ -208,23 +185,6 @@ public class Sherlock {
         List<CoreLabel> out = new ArrayList<>();
         while(tokenizer.hasNext()) {
             out.add(tokenizer.next());
-        }
-        return out;
-    }
-
-    /**
-     * Reads lines from a file
-     * @param filename The name of the file to read
-     * @return A list of all the lines in the file
-     */
-    private static List<String> readLines(String filename) {
-        ArrayList<String> out = new ArrayList<>();
-        try(Scanner in  = new Scanner(new File(filename))) {
-            while(in.hasNextLine()) {
-                out.add(in.nextLine());
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         }
         return out;
     }

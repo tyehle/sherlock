@@ -1,7 +1,5 @@
 package cs.utah.sherlock;
 
-import org.apache.xpath.SourceTree;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -41,6 +39,11 @@ public class Driver {
         return questions;
     }
 
+    /**
+     * Reads a story given a story ID. This function expects there to be a .story file and possibly a .answers file.
+     * @param baseName The first part of the path to the files.
+     * @return A story object containing all the information about the story
+     */
     public static Story readStory(String baseName) {
         try (Scanner in  = new Scanner(new File(baseName+".story"))) {
             String headline = in.nextLine().split("\\s*:\\s*", -1)[1];
@@ -71,11 +74,22 @@ public class Driver {
         }
     }
 
+    /**
+     * Reads a number of stories from disk.
+     * @param prefix The prefix path to all the files.
+     * @param ids A list of story IDs
+     * @return A list of story objects
+     */
     public static List<Story> readStories(String prefix, List<String> ids) {
         return ids.stream().map(id -> readStory(prefix + id)).collect(Collectors.toList());
     }
 
-    public static List<String> readInputFile(String filename) {
+    /**
+     * Reads the manifest file that contains the list of questions and what directory they are located in.
+     * @param filename The name of the manifest file
+     * @return A list of all the question IDs
+     */
+    public static List<String> readManifestFile(String filename) {
         List<String> ids = new ArrayList<>();
         try (Scanner in = new Scanner(new File(filename))) {
             if(in.hasNextLine()) ids.add(new File(in.nextLine()).getCanonicalPath() + File.separator);
@@ -107,6 +121,12 @@ public class Driver {
         }
     }
 
+    /**
+     * Answers all the questions about a particular story.
+     * @param story The story to answer questions about
+     * @param sherlock The sherlock object that answers the questions
+     * @return A string that matches the output specification for this story
+     */
     public static String answerQuestions(Story story, Sherlock sherlock){
         StringBuilder answers = new StringBuilder();
 
@@ -121,9 +141,19 @@ public class Driver {
         return answers.toString();
     }
 
-    public static String generateAnswers(List<Story> stories){
+    /**
+     * Finds answers to all the questions about a number of stories.
+     * @param stories The list of stories to answer questions about.
+     * @return A string matching the output specification for answers to questions
+     */
+    public static String generateAnswers(List<Story> stories) {
         StringBuilder answers = new StringBuilder();
-        Sherlock sherlock = new Sherlock("stop-words.txt");
+        Sherlock sherlock = null;
+        try {
+            sherlock = new Sherlock("stop-words.txt", "ner-models/english.muc.7class.distsim.crf.ser.gz");
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
 
         for(Story story : stories){
             answers.append(answerQuestions(story, sherlock));
@@ -132,6 +162,10 @@ public class Driver {
         return answers.toString();
     }
 
+    /**
+     * Main entry point for the QA system.
+     * @param args Should contain the name of a manifest file specifying a set of questions to answer
+     */
     public static void main(String[] args) {
         if(args.length < 1) {
             System.err.println("Expected input file");
@@ -139,10 +173,10 @@ public class Driver {
         }
 
         if(args.length > 1) {
-            System.out.println("WARNING: More than one input file. Only the first file will be read.");
+            System.err.println("WARNING: More than one input file. Only the first file will be read.");
         }
 
-        List<String> storyIDs = readInputFile(args[0]);
+        List<String> storyIDs = readManifestFile(args[0]);
         String directory = storyIDs.remove(0);
 
         List<Story> stories = readStories(directory, storyIDs);
