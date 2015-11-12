@@ -39,7 +39,7 @@ public class StanfordTest {
     public static void main(String[] args) throws Exception {
 
 //        String serializedClassifier = "classifiers/english.all.3class.distsim.crf.ser.gz";
-        String serializedClassifier = "ner-models/english.all.3class.nodistsim.crf.ser.gz";
+        String serializedClassifier = "ner-models/english.muc.7class.distsim.crf.ser.gz";
 
         if (args.length > 0) {
             serializedClassifier = args[0];
@@ -106,12 +106,15 @@ public class StanfordTest {
              assignments and an n-best list of classifications with probabilities.
           */
 
-            String[] example = {"Good afternoon Rajat Raina, how are you today?",
-                    "I go to school at Stanford University, which is located in California."};
+            String[] example = {"Principal Betty Jean Aucoin says the club is a first for a Nova Scotia\n" +
+                    "public school. She says the school took it on itself to provide a\n" +
+                    "service needed in Liverpool.\n"};
             for (String str : example) {
                 System.out.println(classifier.classifyToString(str));
             }
             System.out.println("---");
+
+            System.exit(0);
 
             for (String str : example) {
                 // This one puts in spaces and newlines between tokens, so just print not println.
