@@ -1,6 +1,7 @@
 SOURCE=$(wildcard src/*)
 
 sherlock: $(SOURCE)
+	mkdir --parents out/production/sherlock
 	javac -cp lib/*:. -d out/production/sherlock/ src/cs/utah/sherlock/*.java
 
 run:
@@ -10,4 +11,4 @@ test: sherlock
 	./test.sh
 
 clean:
-	rm -rfv out/production/sherlock/cs
+	rm -rfv out
