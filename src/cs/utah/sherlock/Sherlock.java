@@ -38,8 +38,8 @@ public class Sherlock {
         List<String> sentences = breakSentences(story.text);
 
         // Create necessary objects for parsing
-        String parserModel = "parser-models/englishPCFG.ser.gz";
-        LexicalizedParser lp = LexicalizedParser.loadModel(parserModel);
+//        String parserModel = "parser-models/englishPCFG.ser.gz";
+//        LexicalizedParser lp = LexicalizedParser.loadModel(parserModel);
 
         List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
 
@@ -47,7 +47,7 @@ public class Sherlock {
             List<CoreLabel> questionTokens = tokenizeString(question.question);
 
             // Get NPs using sentence parsing
-            List<Tree> questionNPs = getNounPhrases(lp.apply(questionTokens));
+//            List<Tree> questionNPs = getNounPhrases(lp.apply(questionTokens));
             // ArrayList<Word>
             //questionNPs.get(1).yieldWords();
             //parseQuestion.pennPrint();
@@ -58,7 +58,7 @@ public class Sherlock {
             String bestAnswer = "Canada";
             for(List<CoreLabel> sentenceTokens : textTokens) {
                 // Get NPs using sentence parsing
-                List<Tree> sentenceNPs = getNounPhrases(lp.apply(sentenceTokens));
+//                List<Tree> sentenceNPs = getNounPhrases(lp.apply(sentenceTokens));
                 //parseSentence.pennPrint();
 
                 // Find the intersection of the questionBag and the sentenceBag
@@ -133,7 +133,7 @@ public class Sherlock {
      * @param sentence The list of tokens to reconstruct
      * @return The sentence the list of tokens came from
      */
-    public static String rebuildSentence(List<CoreLabel> sentence) {
+    public String rebuildSentence(List<CoreLabel> sentence) {
         StringBuilder out = new StringBuilder();
 
         out.append(sentence.get(0).get(CoreAnnotations.BeforeAnnotation.class));
@@ -142,8 +142,10 @@ public class Sherlock {
             String originalWord = label.get(CoreAnnotations.OriginalTextAnnotation.class);
             String spaceAfter = label.get(CoreAnnotations.AfterAnnotation.class);
 
-            out.append(originalWord);
-            out.append(spaceAfter);
+            if(stopWords.contains(originalWord)) {
+                out.append(originalWord);
+                out.append(spaceAfter);
+            }
         }
 
         return out.toString();
