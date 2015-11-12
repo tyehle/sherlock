@@ -58,6 +58,7 @@ public class Sherlock {
         for(Story.Question question : story.questions) {
             List<CoreLabel> questionTokens = tokenizeString(question.question);
             boolean who = questionTokens.get(0).word().toLowerCase().equals("who");
+            boolean where = questionTokens.get(0).word().toLowerCase().equals("where");
             questionTokens.remove(0);
 
             // Get NPs using sentence parsing
@@ -98,16 +99,30 @@ public class Sherlock {
 
             }
             if(who){
-                System.out.println("Entered WHO block");
+                //System.out.println("Entered WHO block");
                 // Filter out only the 'Person' portions of the sentence
                 List<CoreLabel> newBest = new ArrayList<>();
                 for(CoreLabel word : bestAnswer){
-                    // Spelling?
-                    //System.out.println("Found word: " + word.get(CoreAnnotations.AnswerAnnotation.class) + " " + word.toString());
+                    // Only add words that are people or organizations according to Stanford's NER
                     String annotation = word.get(CoreAnnotations.AnswerAnnotation.class);
                     if(annotation.equals("PERSON") || annotation.equals("ORGANIZATION")) {
                         newBest.add(word);
-                        System.out.println("Matched word: " + annotation + " " + word);
+                        //System.out.println("Matched word: " + annotation + " " + word);
+                    }
+                }
+                if(newBest.size() > 0)
+                    bestAnswer = newBest;
+            }
+            else if(where){
+                //System.out.println("Entered WHO block");
+                // Filter out only the 'Person' portions of the sentence
+                List<CoreLabel> newBest = new ArrayList<>();
+                for(CoreLabel word : bestAnswer){
+                    // Only add words that are people or organizations according to Stanford's NER
+                    String annotation = word.get(CoreAnnotations.AnswerAnnotation.class);
+                    if(annotation.equals("LOCATION") || annotation.equals("ORGANIZATION")) {
+                        newBest.add(word);
+                        //System.out.println("Matched word: " + annotation + " " + word);
                     }
                 }
                 if(newBest.size() > 0)
