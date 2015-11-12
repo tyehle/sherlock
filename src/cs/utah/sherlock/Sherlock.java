@@ -1,8 +1,10 @@
 package cs.utah.sherlock;
 
+import edu.stanford.nlp.ie.AbstractSequenceClassifier;
+import edu.stanford.nlp.ie.crf.CRFClassifier;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
-import edu.stanford.nlp.parser.lexparser.LexicalizedParser;
+import edu.stanford.nlp.ling.Word;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
 import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.process.PTBTokenizer;
@@ -10,6 +12,7 @@ import edu.stanford.nlp.trees.Tree;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.StringReader;
 import java.util.*;
 import java.util.function.Function;
@@ -22,10 +25,19 @@ import java.util.stream.Collectors;
 public class Sherlock {
 
     public final Set<String> stopWords;
+    private AbstractSequenceClassifier<CoreLabel> ner;
 
     public Sherlock(String stopWordsFile) {
+        try {
+            ner = CRFClassifier.getClassifier("ner-models/english.muc.7class.distsim.crf.ser.gz");
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
         this.stopWords = new HashSet<>(readLines(stopWordsFile));
     }
+
 
     /**
      * Answers the the questions about a story.
@@ -45,6 +57,8 @@ public class Sherlock {
 
         for(Story.Question question : story.questions) {
             List<CoreLabel> questionTokens = tokenizeString(question.question);
+            boolean who = questionTokens.get(0).word().toLowerCase().equals("who");
+            questionTokens.remove(0);
 
             // Get NPs using sentence parsing
 //            List<Tree> questionNPs = getNounPhrases(lp.apply(questionTokens));
@@ -55,11 +69,13 @@ public class Sherlock {
             Set<String> questionBag = getBagOfWords(questionTokens, true);
 
             int bestIntersectionSize = 0;
-            String bestAnswer = "Canada";
+            List<CoreLabel> bestAnswer = new ArrayList<>();
             for(List<CoreLabel> sentenceTokens : textTokens) {
                 // Get NPs using sentence parsing
 //                List<Tree> sentenceNPs = getNounPhrases(lp.apply(sentenceTokens));
                 //parseSentence.pennPrint();
+
+                sentenceTokens = ner.classify(sentenceTokens);
 
                 // Find the intersection of the questionBag and the sentenceBag
                 Set<String> intersection = getBagOfWords(sentenceTokens, true);
@@ -67,20 +83,38 @@ public class Sherlock {
 
                 if(intersection.size() > bestIntersectionSize) {
                     bestIntersectionSize = intersection.size();
-                    bestAnswer = rebuildSentence(sentenceTokens);
+                    //bestAnswer = rebuildSentence(sentenceTokens);
+                    bestAnswer = sentenceTokens;
                 }
                 else if (intersection.size() == bestIntersectionSize && bestIntersectionSize != 0) {
                     // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
                     // For now prefer shorter sentences
-                    String newAnswer = rebuildSentence(sentenceTokens);
-                    if(newAnswer.length() < bestAnswer.length()) {
+                    //String newAnswer = rebuildSentence(sentenceTokens);
+                    if(sentenceTokens.size() < bestAnswer.size()) {
                         bestIntersectionSize = intersection.size();
-                        bestAnswer = newAnswer;
+                        bestAnswer = sentenceTokens;
                     }
                 }
 
             }
-            questionAnswers.put(question, bestAnswer);
+            if(who){
+                System.out.println("Entered WHO block");
+                // Filter out only the 'Person' portions of the sentence
+                List<CoreLabel> newBest = new ArrayList<>();
+                for(CoreLabel word : bestAnswer){
+                    // Spelling?
+                    //System.out.println("Found word: " + word.get(CoreAnnotations.AnswerAnnotation.class) + " " + word.toString());
+                    String annotation = word.get(CoreAnnotations.AnswerAnnotation.class);
+                    if(annotation.equals("PERSON") || annotation.equals("ORGANIZATION")) {
+                        newBest.add(word);
+                        System.out.println("Matched word: " + annotation + " " + word);
+                    }
+                }
+                if(newBest.size() > 0)
+                    bestAnswer = newBest;
+            }
+
+            questionAnswers.put(question, rebuildSentence(bestAnswer));
         }
 
         return questionAnswers;
@@ -93,7 +127,6 @@ public class Sherlock {
 //        for (Tree child : parent)
 //            if(child.label().value().equals("NP"))
 //                nounPhrases.add(child);
-
         return nounPhrases;
     }
 
