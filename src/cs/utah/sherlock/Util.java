@@ -25,6 +25,11 @@ public class Util {
         public B second() {
             return b;
         }
+
+        @Override
+        public String toString() {
+            return "(" + a + ", " + b + ")";
+        }
     }
 
     public static <A, B> Pair<A, B> pairOf(A a, B b) {
