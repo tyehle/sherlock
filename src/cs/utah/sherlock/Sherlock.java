@@ -106,17 +106,23 @@ public class Sherlock {
         CoreMap bestAnswer = null;
 
         for(CoreMap sentence : sentences) {
-            Set<String> intersection = getBagOfWords(sentence.get(CoreAnnotations.TokensAnnotation.class));
+            List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
+            Set<String> intersection = getBagOfWords(tokens);
             intersection.retainAll(questionBag);
 
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
             // For now prefer shorter sentences
             if(intersection.size() > bestIntersectionSize ||
-                    (intersection.size() == bestIntersectionSize && bestAnswer != null && sentence.size() < bestAnswer.size())) {
+                    (intersection.size() == bestIntersectionSize && bestAnswer != null && tokens.size() < bestAnswer.size())) {
                 bestAnswer = sentence;
                 bestIntersectionSize = intersection.size();
             }
         }
+
+
+//        System.out.println("Question: " + questionBag);
+//        System.out.println("Found " + getBagOfWords(bestAnswer.get(CoreAnnotations.TokensAnnotation.class)) + " with intersection " + bestIntersectionSize);
+//        System.out.println();
 
         return bestAnswer;
     }
@@ -146,12 +152,16 @@ public class Sherlock {
      * @return the bag of words
      */
     private Set<String> getBagOfWords(List<CoreLabel> sentence) {
+//        System.out.println("Sentence:\t" + sentence);
         Morphology morph = new Morphology();
         Function<CoreLabel, String> stemmer = word -> morph.stem(word.word());
         Set<String> bagOfWords = sentence.stream().map(stemmer).collect(Collectors.toSet());
 
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
+
+//        System.out.println("Bag:\t" + bagOfWords);
+//        System.out.println();
 
         return bagOfWords;
     }
