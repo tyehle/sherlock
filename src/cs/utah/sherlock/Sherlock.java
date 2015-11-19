@@ -32,7 +32,8 @@ public class Sherlock {
         // using ner "muc7" model
         props.put("ner.model", "ner-models/english.muc.7class.distsim.crf.ser.gz");
 
-        props.put("annotators", "tokenize, ssplit, ner, parse, dcoref");
+//        props.put("annotators", "tokenize, ssplit, ner, parse, dcoref");
+        props.put("annotators", "tokenize, ssplit, ner");
         props.setProperty("ner.useSUTime", "false");
         props.setProperty("ner.applyNumericClassifiers", "false");
 
@@ -103,6 +104,7 @@ public class Sherlock {
         Set<String> questionBag = getBagOfWords(question);
 
         int bestIntersectionSize = 0;
+        int bestSize = 0;
         CoreMap bestAnswer = null;
 
         for(CoreMap sentence : sentences) {
@@ -113,16 +115,12 @@ public class Sherlock {
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
             // For now prefer shorter sentences
             if(intersection.size() > bestIntersectionSize ||
-                    (intersection.size() == bestIntersectionSize && bestAnswer != null && tokens.size() < bestAnswer.size())) {
+                    (intersection.size() == bestIntersectionSize && bestAnswer != null && tokens.size() < bestSize)) {
                 bestAnswer = sentence;
                 bestIntersectionSize = intersection.size();
+                bestSize = tokens.size();
             }
         }
-
-
-//        System.out.println("Question: " + questionBag);
-//        System.out.println("Found " + getBagOfWords(bestAnswer.get(CoreAnnotations.TokensAnnotation.class)) + " with intersection " + bestIntersectionSize);
-//        System.out.println();
 
         return bestAnswer;
     }
