@@ -37,6 +37,9 @@ public class Sherlock {
     }
 
 
+    // TODO: Use coreference resolution to replace later instances with original, this will improve bagging
+    // TODO: Get wordnet, use it to semantic classification of the head noun in each NP
+
     /**
      * Answers the the questions about a story.
      * @param story The story to answer questions about.
@@ -113,16 +116,6 @@ public class Sherlock {
         else {
             return sentence;
         }
-    }
-
-    private List<Tree> getNounPhrases(Tree parent)
-    {
-        List<Tree> nounPhrases = parent.stream().filter(child -> child.label().value().equals("NP")).collect(Collectors.toList());
-
-//        for (Tree child : parent)
-//            if(child.label().value().equals("NP"))
-//                nounPhrases.add(child);
-        return nounPhrases;
     }
 
     /**
