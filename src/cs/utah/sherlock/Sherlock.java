@@ -1,13 +1,18 @@
 package cs.utah.sherlock;
 
+import edu.stanford.nlp.dcoref.CorefChain;
+import edu.stanford.nlp.dcoref.CorefCoreAnnotations;
 import edu.stanford.nlp.ie.AbstractSequenceClassifier;
 import edu.stanford.nlp.ie.crf.CRFClassifier;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.pipeline.Annotation;
+import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
 import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.process.PTBTokenizer;
 import edu.stanford.nlp.trees.Tree;
+import edu.stanford.nlp.util.CoreMap;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -25,8 +30,20 @@ public class Sherlock {
     private AbstractSequenceClassifier<CoreLabel> ner;
 
     private Map<String, Set<String>> nerFilter;
+    private StanfordCoreNLP pipeline;
 
     public Sherlock(String stopWordsFile, String nerModelFile) throws IOException, ClassNotFoundException {
+        // creates a StanfordCoreNLP object, with POS tagging, lemmatization, NER, parsing, and coreference resolution
+        Properties props = new Properties();
+        // using ner "muc7" model
+        props.put("ner.model", "ner-models/english.muc.7class.distsim.crf.ser.gz");
+
+        props.put("annotators", "tokenize, ssplit, ner, parse, dcoref");
+        props.setProperty("ner.useSUTime", "false");
+        props.setProperty("ner.applyNumericClassifiers", "false");
+
+        pipeline = new StanfordCoreNLP(props);
+
         ner = CRFClassifier.getClassifier(nerModelFile);
 
         this.stopWords = new HashSet<>(Util.readLines(stopWordsFile));
@@ -48,8 +65,18 @@ public class Sherlock {
     public Map<Story.Question, String> processStory(Story story) {
         Map<Story.Question, String> questionAnswers = new HashMap<>();
 
-        List<String> sentences = breakSentences(story.text);
-        List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
+        // create an empty Annotation just with the given text
+        Annotation document = new Annotation(story.text);
+
+        // run all Annotators on this text
+        pipeline.annotate(document);
+
+        // these are all the sentences in this document
+        // a CoreMap is essentially a Map that uses class objects as keys and has values with custom types
+        List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
+
+        //List<String> sentences = breakSentences(story.text);
+        //List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
 
         // answer each question
         for(Story.Question question : story.questions) {
@@ -59,13 +86,15 @@ public class Sherlock {
             // ignore the first word of the question when doing bagging
             questionTokens.remove(0);
 
-            List<CoreLabel> bestSentence = findBestByBagging(questionTokens, textTokens);
+            // TODO: calculate a bag of words that also contains all coreferent terms
+            CoreMap bestSentence = findBestByBagging(questionTokens, sentences);
 
-            ner.classify(bestSentence);
+            // Might remove everything
             List<CoreLabel> filtered = applyNERFilter(questionType, bestSentence);
-            bestSentence = filtered.size() > 0 ? filtered : bestSentence;
+            // Best is not necessarily the whole sentence; it might be just people/organizations, depending on the question
+            List<CoreLabel> best = filtered.size() > 0 ? filtered : bestSentence.get(CoreAnnotations.TokensAnnotation.class);
 
-            questionAnswers.put(question, rebuildSentence(bestSentence));
+            questionAnswers.put(question, rebuildSentence(best));
         }
 
         return questionAnswers;
@@ -78,20 +107,20 @@ public class Sherlock {
      * @param sentences All the sentences in the document
      * @return The best sentence in the document
      */
-    private List<CoreLabel> findBestByBagging(List<CoreLabel> question, List<List<CoreLabel>> sentences) {
+    private CoreMap findBestByBagging(List<CoreLabel> question, List<CoreMap> sentences) {
         Set<String> questionBag = getBagOfWords(question);
 
         int bestIntersectionSize = 0;
-        List<CoreLabel> bestAnswer = Util.listOf();
+        CoreMap bestAnswer = null;
 
-        for(List<CoreLabel> sentence : sentences) {
-            Set<String> intersection = getBagOfWords(sentence);
+        for(CoreMap sentence : sentences) {
+            Set<String> intersection = getBagOfWords(sentence.get(CoreAnnotations.TokensAnnotation.class));
             intersection.retainAll(questionBag);
 
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
             // For now prefer shorter sentences
             if(intersection.size() > bestIntersectionSize ||
-                    (intersection.size() == bestIntersectionSize && sentence.size() < bestAnswer.size())) {
+                    (intersection.size() == bestIntersectionSize && bestAnswer != null && sentence.size() < bestAnswer.size())) {
                 bestAnswer = sentence;
                 bestIntersectionSize = intersection.size();
             }
@@ -106,15 +135,16 @@ public class Sherlock {
      * @param sentence The sentence to filter
      * @return All the words matching the allowed annotations, or the sentence if the key was not valid
      */
-    private List<CoreLabel> applyNERFilter(String key, List<CoreLabel> sentence) {
+    private List<CoreLabel> applyNERFilter(String key, CoreMap sentence) {
+        List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
         if(nerFilter.containsKey(key)) {
-            return sentence.stream().filter(token -> {
+            return tokens.stream().filter(token -> {
                 String annotation = token.get(CoreAnnotations.AnswerAnnotation.class);
                 return nerFilter.get(key).contains(annotation);
             }).collect(Collectors.toList());
         }
         else {
-            return sentence;
+            return tokens;
         }
     }
 
