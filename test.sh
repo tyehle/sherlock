@@ -26,5 +26,5 @@ else
     perl score-answers.pl answers "$name-answers" | tail -n 11
 fi
 
-rm answers
+#rm answers
 
