@@ -25,11 +25,12 @@ public class StanfordCoRef {
 
         props.put("annotators", "tokenize, ssplit, ner");
         props.setProperty("ner.useSUTime", "false");
+        props.setProperty("enforceRequirements", "false");
 
         StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
 
         // read some text in the text variable
-        String text = "Mary has a little lamb. She is very cute."; // Add your text here!
+        String text = "Mary has a little lamb. She is very cute. Good afternoon Rajat."; // Add your text here!
 
         // create an empty Annotation just with the given text
         Annotation document = new Annotation(text);
@@ -42,6 +43,7 @@ public class StanfordCoRef {
         List<CoreMap> sentences = document.get(SentencesAnnotation.class);
 
         for(CoreMap sentence: sentences) {
+            System.out.println("----------");
             // traversing the words in the current sentence
             // a CoreLabel is a CoreMap with additional token-specific methods
             for (CoreLabel token: sentence.get(TokensAnnotation.class)) {
@@ -49,6 +51,8 @@ public class StanfordCoRef {
                 String word = token.get(TextAnnotation.class);
                 // this is the NER label of the token
                 String ne = token.get(NamedEntityTagAnnotation.class);
+
+                System.out.println(word+": "+ne);
             }
         }
 
