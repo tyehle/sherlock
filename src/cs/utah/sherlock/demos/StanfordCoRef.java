@@ -20,7 +20,12 @@ public class StanfordCoRef {
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         // creates a StanfordCoreNLP object, with POS tagging, lemmatization, NER, parsing, and coreference resolution
         Properties props = new Properties();
-        props.put("annotators", "tokenize, ssplit, ner, dcoref");
+        // using ner "muc7" model
+        props.put("ner.model", "ner-models/english.muc.7class.distsim.crf.ser.gz");
+
+        props.put("annotators", "tokenize, ssplit, ner");
+        props.setProperty("ner.useSUTime", "false");
+
         StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
 
         // read some text in the text variable
