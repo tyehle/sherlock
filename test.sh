@@ -18,7 +18,7 @@ while getopts ":n:v" opt; do
 done
 
 
-java -cp out/production/sherlock:lib/* cs.utah.sherlock.Driver "$name-manifest" > answers
+time java -cp out/production/sherlock:lib/* cs.utah.sherlock.Driver "$name-manifest" > answers
 
 if [[ $verbose = true ]]; then
     perl score-answers.pl answers "$name-answers"
