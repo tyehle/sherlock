@@ -35,7 +35,7 @@ import java.util.List;
  * @author Jenny Finkel
  * @author Christopher Manning
  */
-public class StanfordTest {
+public class StanfordNER {
     public static void main(String[] args) throws Exception {
 
 //        String serializedClassifier = "classifiers/english.all.3class.distsim.crf.ser.gz";
