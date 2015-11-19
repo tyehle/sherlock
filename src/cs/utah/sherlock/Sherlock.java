@@ -1,9 +1,5 @@
 package cs.utah.sherlock;
 
-import edu.stanford.nlp.dcoref.CorefChain;
-import edu.stanford.nlp.dcoref.CorefCoreAnnotations;
-import edu.stanford.nlp.ie.AbstractSequenceClassifier;
-import edu.stanford.nlp.ie.crf.CRFClassifier;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
@@ -11,7 +7,6 @@ import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
 import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.process.PTBTokenizer;
-import edu.stanford.nlp.trees.Tree;
 import edu.stanford.nlp.util.CoreMap;
 
 import java.io.IOException;
@@ -27,12 +22,11 @@ import java.util.stream.Collectors;
 public class Sherlock {
 
     public final Set<String> stopWords;
-    private AbstractSequenceClassifier<CoreLabel> ner;
 
     private Map<String, Set<String>> nerFilter;
     private StanfordCoreNLP pipeline;
 
-    public Sherlock(String stopWordsFile, String nerModelFile) throws IOException, ClassNotFoundException {
+    public Sherlock(String stopWordsFile) throws IOException, ClassNotFoundException {
         // creates a StanfordCoreNLP object, with POS tagging, lemmatization, NER, parsing, and coreference resolution
         Properties props = new Properties();
         // using ner "muc7" model
@@ -43,8 +37,6 @@ public class Sherlock {
         props.setProperty("ner.applyNumericClassifiers", "false");
 
         pipeline = new StanfordCoreNLP(props);
-
-        ner = CRFClassifier.getClassifier(nerModelFile);
 
         this.stopWords = new HashSet<>(Util.readLines(stopWordsFile));
 
@@ -165,15 +157,6 @@ public class Sherlock {
     }
 
     /***** HELPER FUNCTIONS *****/
-
-    /**
-     * Generates sentence tokens from the given corpus
-     * @param document The document.
-     * @return List of "sentences" (token list)
-     */
-    public static List<String> breakSentences(String document) {
-        return Arrays.asList(document.split("\\.|!|\\?"));
-    }
 
     /**
      * Rebuilds a sentence from a list of tokens.
