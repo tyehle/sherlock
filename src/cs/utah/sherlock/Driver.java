@@ -150,7 +150,7 @@ public class Driver {
         StringBuilder answers = new StringBuilder();
         Sherlock sherlock = null;
         try {
-            sherlock = new Sherlock("stop-words.txt", "ner-models/english.muc.7class.distsim.crf.ser.gz");
+            sherlock = new Sherlock("stop-words.txt");
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
