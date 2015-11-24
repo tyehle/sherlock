@@ -42,8 +42,8 @@ public class Sherlock {
         this.stopWords = new HashSet<>(Util.readLines(stopWordsFile));
 
         // build the ner filter
-        nerFilter = Util.mapOF(Util.pairOf("who", Util.setOf("PERSON", "ORGANIZATION")),
-                               Util.pairOf("where", Util.setOf("LOCATION", "ORGANIZATION")));
+        nerFilter = Util.mapOf(Util.pairOf("who", Util.setOf("PERSON", "ORGANIZATION")),
+                Util.pairOf("where", Util.setOf("LOCATION", "ORGANIZATION")));
     }
 
 
