@@ -47,7 +47,7 @@ public class Util {
     }
 
     @SafeVarargs
-    public static <K, V> Map<K, V> mapOF(Pair<K, V>... things) {
+    public static <K, V> Map<K, V> mapOf(Pair<K, V>... things) {
         Map<K, V> out = new HashMap<>(things.length);
         for(Pair<K, V> pair : things) {
             out.put(pair.first(), pair.second());
