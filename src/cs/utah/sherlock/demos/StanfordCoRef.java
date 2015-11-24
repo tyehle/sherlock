@@ -21,7 +21,7 @@ public class StanfordCoRef {
         // creates a StanfordCoreNLP object, with POS tagging, lemmatization, NER, parsing, and coreference resolution
         Properties props = new Properties();
         // using ner "muc7" model
-        props.put("ner.model", "ner-models/english.muc.7class.distsim.crf.ser.gz");
+        props.put("ner.model", "edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz");
 
         props.put("annotators", "tokenize, ssplit, ner, parse, dcoref");
         props.setProperty("ner.useSUTime", "false");
