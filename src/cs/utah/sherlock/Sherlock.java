@@ -50,8 +50,10 @@ public class Sherlock {
         this.verbTags = Util.setOf("VB", "VBD", "VBG", "VBN", "VBP", "VBZ");
 
         // build the ner filter
+        // NER-TAGS: Location, Person, Organization, Money, Percent, Date, Time
         nerFilter = Util.mapOf(Util.pairOf("who", Util.setOf("PERSON", "ORGANIZATION")),
-                Util.pairOf("where", Util.setOf("LOCATION", "ORGANIZATION")));
+                               Util.pairOf("where", Util.setOf("LOCATION", "ORGANIZATION")),
+                               Util.pairOf("when", Util.setOf("DATE", "TIME")));
     }
 
 
@@ -155,8 +157,8 @@ public class Sherlock {
         List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
         if(nerFilter.containsKey(key)) {
             return tokens.stream().filter(token -> {
-                String annotation = token.get(CoreAnnotations.AnswerAnnotation.class);
-                return nerFilter.get(key).contains(annotation);
+                String nerTag = token.get(CoreAnnotations.NamedEntityTagAnnotation.class);
+                return nerFilter.get(key).contains(nerTag);
             }).collect(Collectors.toList());
         }
         else {
