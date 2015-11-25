@@ -49,6 +49,8 @@ public class Sherlock {
 
     // TODO: Use coreference resolution to replace later instances with original, this will improve bagging
     // TODO: Get wordnet, use it to semantic classification of the head noun in each NP
+    // TODO: Weight verbs more highly when finding the best sentence by bagging
+    // TODO: Implement Ellen's rules for different question types
 
     /**
      * Answers the the questions about a story.
