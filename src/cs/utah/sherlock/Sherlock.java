@@ -53,7 +53,8 @@ public class Sherlock {
         // NER-TAGS: Location, Person, Organization, Money, Percent, Date, Time
         nerFilter = Util.mapOf(Util.pairOf("who", Util.setOf("PERSON", "ORGANIZATION")),
                                Util.pairOf("where", Util.setOf("LOCATION", "ORGANIZATION")),
-                               Util.pairOf("when", Util.setOf("DATE", "TIME")));
+                               Util.pairOf("when", Util.setOf("DATE", "TIME")),
+                               Util.pairOf("how", Util.setOf("MONEY", "PERCENT"))); // TODO: Change this to how much
     }
 
 
