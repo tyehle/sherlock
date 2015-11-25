@@ -4,5 +4,7 @@ sytax: blob
 out/*
 sherlock.iml
 
+answers
+
 ner-models/*
 parser-models/*
