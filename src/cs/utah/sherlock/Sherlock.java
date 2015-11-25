@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class Sherlock {
 
     public final Set<String> stopWords;
+    private final Set<String> verbTags;
 
     private Map<String, Set<String>> nerFilter;
     private StanfordCoreNLP pipeline;
@@ -40,6 +41,8 @@ public class Sherlock {
         pipeline = new StanfordCoreNLP(props);
 
         this.stopWords = new HashSet<>(Util.readLines(stopWordsFile));
+
+        this.verbTags = Util.setOf("VB", "VBD", "VBG", "VBN", "VBP", "VBZ");
 
         // build the ner filter
         nerFilter = Util.mapOf(Util.pairOf("who", Util.setOf("PERSON", "ORGANIZATION")),
@@ -110,6 +113,8 @@ public class Sherlock {
         CoreMap bestAnswer = null;
 
         for(CoreMap sentence : sentences) {
+            // Split into verbs and not verbs
+
             List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
             Set<String> intersection = getBagOfWords(tokens);
             intersection.retainAll(questionBag);
@@ -152,7 +157,6 @@ public class Sherlock {
      * @return the bag of words
      */
     private Set<String> getBagOfWords(List<CoreLabel> sentence) {
-//        System.out.println("Sentence:\t" + sentence);
         Morphology morph = new Morphology();
         Function<CoreLabel, String> stemmer = word -> morph.stem(word.word());
         Set<String> bagOfWords = sentence.stream().map(stemmer).collect(Collectors.toSet());
@@ -160,10 +164,16 @@ public class Sherlock {
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
 
-//        System.out.println("Bag:\t" + bagOfWords);
-//        System.out.println();
-
         return bagOfWords;
+    }
+
+    private Util.Pair<List<CoreLabel>, List<CoreLabel>> getVerbsAndNotVerbs(CoreMap sentence){
+        Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = Util.pairOf(Util.listOf(), Util.listOf());
+
+        // Get verbs
+        
+
+        return verbNotVerb;
     }
 
     /***** HELPER FUNCTIONS *****/
