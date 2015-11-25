@@ -7,6 +7,8 @@ import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 import edu.stanford.nlp.process.CoreLabelTokenFactory;
 import edu.stanford.nlp.process.Morphology;
 import edu.stanford.nlp.process.PTBTokenizer;
+import edu.stanford.nlp.trees.Tree;
+import edu.stanford.nlp.trees.TreeCoreAnnotations;
 import edu.stanford.nlp.util.CoreMap;
 
 import java.io.IOException;
@@ -114,6 +116,10 @@ public class Sherlock {
 
         for(CoreMap sentence : sentences) {
             // Split into verbs and not verbs
+            //Tree sentenceTree = sentence.get(TreeCoreAnnotations.TreeAnnotation.class);
+            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(sentence);
+
+            // Weigh the verbs higher than words that are not verbs, as per Ellen's paper
 
             List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
             Set<String> intersection = getBagOfWords(tokens);
@@ -164,17 +170,40 @@ public class Sherlock {
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
 
+
+
+
         return bagOfWords;
     }
 
+    /* [class edu.stanford.nlp.ling.CoreAnnotations$TextAnnotation,
+    class edu.stanford.nlp.ling.CoreAnnotations$CharacterOffsetBeginAnnotation,
+    class edu.stanford.nlp.ling.CoreAnnotations$CharacterOffsetEndAnnotation,
+    class edu.stanford.nlp.ling.CoreAnnotations$TokensAnnotation,
+    class edu.stanford.nlp.ling.CoreAnnotations$TokenBeginAnnotation,
+    class edu.stanford.nlp.ling.CoreAnnotations$TokenEndAnnotation,
+    class edu.stanford.nlp.ling.CoreAnnotations$SentenceIndexAnnotation,
+    class edu.stanford.nlp.trees.TreeCoreAnnotations$TreeAnnotation,
+    class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$CollapsedDependenciesAnnotation,
+    class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$BasicDependenciesAnnotation,
+    class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$CollapsedCCProcessedDependenciesAnnotation,
+    class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$AlternativeDependenciesAnnotation */
     private Util.Pair<List<CoreLabel>, List<CoreLabel>> getVerbsAndNotVerbs(CoreMap sentence){
-        Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = Util.pairOf(Util.listOf(), Util.listOf());
+        List<CoreLabel> verbs = Util.listOf();
+        List<CoreLabel> notVerbs = Util.listOf();
 
-        // Get verbs
-        
+        // Get words that match our verb tags, and not
+        for(CoreLabel word : sentence.get(CoreAnnotations.TokensAnnotation.class)){
+            if(verbTags.contains(word.get(CoreAnnotations.PartOfSpeechAnnotation.class)))
+                verbs.add(word);
+            else
+                notVerbs.add(word);
+        }
 
-        return verbNotVerb;
+        return Util.pairOf(verbs, notVerbs);
     }
+
+
 
     /***** HELPER FUNCTIONS *****/
 
