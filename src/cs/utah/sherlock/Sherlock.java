@@ -176,10 +176,6 @@ public class Sherlock {
 
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
-
-
-
-
         return bagOfWords;
     }
 
