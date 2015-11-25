@@ -28,6 +28,7 @@ public class Sherlock {
 
     private Map<String, Set<String>> nerFilter;
     private StanfordCoreNLP pipeline;
+    private double verbWeight;
 
     public Sherlock(String stopWordsFile) throws IOException, ClassNotFoundException {
         // creates a StanfordCoreNLP object, with POS tagging, lemmatization, NER, parsing, and coreference resolution
@@ -39,6 +40,8 @@ public class Sherlock {
 //        props.put("annotators", "tokenize, ssplit, ner");
         props.setProperty("ner.useSUTime", "false");
         props.setProperty("ner.applyNumericClassifiers", "false");
+
+        verbWeight = 3;
 
         pipeline = new StanfordCoreNLP(props);
 
@@ -110,7 +113,7 @@ public class Sherlock {
     private CoreMap findBestByBagging(List<CoreLabel> question, List<CoreMap> sentences) {
         Set<String> questionBag = getBagOfWords(question);
 
-        int bestIntersectionSize = 0;
+        double bestScore = 0;
         int bestSize = 0;
         CoreMap bestAnswer = null;
 
@@ -120,18 +123,23 @@ public class Sherlock {
             Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(sentence);
 
             // Weigh the verbs higher than words that are not verbs, as per Ellen's paper
+            //List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
+            int sentenceSize = verbNotVerb.first().size() + verbNotVerb.second().size();
+            Set<String> verbIntersection = getBagOfWords(verbNotVerb.first());
+            Set<String> notVerbIntersection = getBagOfWords(verbNotVerb.first());
+//            Set<String> intersection = getBagOfWords(verbIntersection);
+            verbIntersection.retainAll(questionBag);
+            notVerbIntersection.retainAll(questionBag);
 
-            List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
-            Set<String> intersection = getBagOfWords(tokens);
-            intersection.retainAll(questionBag);
+            double score = verbIntersection.size()*verbWeight + notVerbIntersection.size();
 
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
             // For now prefer shorter sentences
-            if(intersection.size() > bestIntersectionSize ||
-                    (intersection.size() == bestIntersectionSize && bestAnswer != null && tokens.size() < bestSize)) {
+            if(score > bestScore ||
+                    (score == bestScore && bestAnswer != null && sentenceSize < bestSize)) {
                 bestAnswer = sentence;
-                bestIntersectionSize = intersection.size();
-                bestSize = tokens.size();
+                bestScore = score;
+                bestSize = sentenceSize;
             }
         }
 
