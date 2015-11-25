@@ -36,12 +36,12 @@ public class Sherlock {
         // using ner "muc7" model
         props.put("ner.model", "edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz");
 
-        props.put("annotators", "tokenize, ssplit, ner, parse, dcoref");
-//        props.put("annotators", "tokenize, ssplit, ner");
+//        props.put("annotators", "tokenize, ssplit, ner, parse, dcoref");
+        props.put("annotators", "tokenize, ssplit, pos, ner");
         props.setProperty("ner.useSUTime", "false");
         props.setProperty("ner.applyNumericClassifiers", "false");
 
-        verbWeight = 3;
+        verbWeight = 2; // TODO: DOOO SOME CV
 
         pipeline = new StanfordCoreNLP(props);
 
@@ -57,7 +57,6 @@ public class Sherlock {
 
     // TODO: Use coreference resolution to replace later instances with original, this will improve bagging
     // TODO: Get wordnet, use it to semantic classification of the head noun in each NP
-    // TODO: Weight verbs more highly when finding the best sentence by bagging
     // TODO: Implement Ellen's rules for different question types
 
     /**
@@ -126,7 +125,7 @@ public class Sherlock {
             //List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
             int sentenceSize = verbNotVerb.first().size() + verbNotVerb.second().size();
             Set<String> verbIntersection = getBagOfWords(verbNotVerb.first());
-            Set<String> notVerbIntersection = getBagOfWords(verbNotVerb.first());
+            Set<String> notVerbIntersection = getBagOfWords(verbNotVerb.second());
 //            Set<String> intersection = getBagOfWords(verbIntersection);
             verbIntersection.retainAll(questionBag);
             notVerbIntersection.retainAll(questionBag);
