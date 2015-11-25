@@ -32,8 +32,8 @@ public class Sherlock {
         // using ner "muc7" model
         props.put("ner.model", "edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz");
 
-//        props.put("annotators", "tokenize, ssplit, ner, parse, dcoref");
-        props.put("annotators", "tokenize, ssplit, ner");
+        props.put("annotators", "tokenize, ssplit, ner, parse, dcoref");
+//        props.put("annotators", "tokenize, ssplit, ner");
         props.setProperty("ner.useSUTime", "false");
         props.setProperty("ner.applyNumericClassifiers", "false");
 
