@@ -116,14 +116,14 @@ public class Sherlock {
 
         Collection<CorefChain> corefChains = document.get(CorefCoreAnnotations.CorefChainAnnotation.class).values();
 
-        Map<List<Integer>, List<CoreLabel>> corefTokens = Util.mapOf();
+        Map<List<Integer>, List<CoreLabel>> corefMap = Util.mapOf();
 
         for(CorefChain chain : corefChains) {
             List<Integer> sentenceIndices = chain.getMentionsInTextualOrder().stream()
                     .map(mention -> mention.sentNum - 1)
                     .collect(Collectors.toList());
             List<CoreLabel> tokens = findAllMentions(document, chain);
-            corefTokens.put(sentenceIndices, tokens);
+            corefMap.put(sentenceIndices, tokens);
         }
 
         List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
@@ -131,11 +131,21 @@ public class Sherlock {
         double bestScore = 0;
         int bestSize = 0;
         CoreMap bestAnswer = null;
+        for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++){
+            CoreMap sentence = sentences.get(sentenceNum);
 
-        for(CoreMap sentence : sentences) {
+            List<CoreLabel> corefTokens = new ArrayList<>();
+            for(Map.Entry<List<Integer>, List<CoreLabel>> entry : corefMap.entrySet()) {
+                List<Integer> indices = entry.getKey();
+                if(indices.contains(sentenceNum)) {
+                    corefTokens.addAll(entry.getValue());
+                }
+            }
+
             // Split into verbs and not verbs
             //Tree sentenceTree = sentence.get(TreeCoreAnnotations.TreeAnnotation.class);
-            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(sentence);
+            corefTokens.addAll(sentence.get(CoreAnnotations.TokensAnnotation.class));
+            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(corefTokens);
 
             // Weigh the verbs higher than words that are not verbs, as per Ellen's paper
             //List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
@@ -226,12 +236,12 @@ public class Sherlock {
     class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$BasicDependenciesAnnotation,
     class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$CollapsedCCProcessedDependenciesAnnotation,
     class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$AlternativeDependenciesAnnotation */
-    private Util.Pair<List<CoreLabel>, List<CoreLabel>> getVerbsAndNotVerbs(CoreMap sentence){
+    private Util.Pair<List<CoreLabel>, List<CoreLabel>> getVerbsAndNotVerbs(List<CoreLabel> sentence){
         List<CoreLabel> verbs = Util.listOf();
         List<CoreLabel> notVerbs = Util.listOf();
 
         // Get words that match our verb tags, and not
-        for(CoreLabel word : sentence.get(CoreAnnotations.TokensAnnotation.class)){
+        for(CoreLabel word : sentence){
             if(verbTags.contains(word.get(CoreAnnotations.PartOfSpeechAnnotation.class)))
                 verbs.add(word);
             else
