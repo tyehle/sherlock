@@ -1,16 +1,16 @@
 package cs.utah.sherlock;
 
+import edu.stanford.nlp.dcoref.CorefChain;
+import edu.stanford.nlp.dcoref.CorefCoreAnnotations;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
-import edu.stanford.nlp.process.CoreLabelTokenFactory;
 import edu.stanford.nlp.process.Morphology;
-import edu.stanford.nlp.process.PTBTokenizer;
 import edu.stanford.nlp.util.CoreMap;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -34,8 +34,8 @@ public class Sherlock {
         // using ner "muc7" model
         props.put("ner.model", "edu/stanford/nlp/models/ner/english.muc.7class.distsim.crf.ser.gz");
 
-//        props.put("annotators", "tokenize, ssplit, pos, ner, parse, dcoref");
-        props.put("annotators", "tokenize, ssplit, pos, ner");
+        props.put("annotators", "tokenize, ssplit, pos, ner, parse, dcoref");
+//        props.put("annotators", "tokenize, ssplit, pos, ner");
         props.setProperty("ner.useSUTime", "false");
         props.setProperty("ner.applyNumericClassifiers", "false");
 
@@ -76,21 +76,23 @@ public class Sherlock {
 
         // these are all the sentences in this document
         // a CoreMap is essentially a Map that uses class objects as keys and has values with custom types
-        List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
-
-        //List<String> sentences = breakSentences(story.text);
-        //List<List<CoreLabel>> textTokens = sentences.stream().map(Sherlock::tokenizeString).collect(Collectors.toList());
 
         // answer each question
         for(Story.Question question : story.questions) {
-            List<CoreLabel> questionTokens = tokenizeString(question.question);
+            // run the question through the pipeline
+            Annotation bullshitAnnotationObject = new Annotation(question.question);
+            pipeline.annotate(bullshitAnnotationObject);
+            CoreMap annotatedQuestion = bullshitAnnotationObject.get(CoreAnnotations.SentencesAnnotation.class).get(0);
+
+            List<CoreLabel> questionTokens = annotatedQuestion.get(CoreAnnotations.TokensAnnotation.class);
+
             String questionType = questionTokens.get(0).word().toLowerCase();
 
             // ignore the first word of the question when doing bagging
             questionTokens.remove(0);
 
             // TODO: calculate a bag of words that also contains all coreferent terms
-            CoreMap bestSentence = findBestByBagging(questionTokens, sentences);
+            CoreMap bestSentence = findBestByBagging(annotatedQuestion, document);
 
             // Might remove everything
             List<CoreLabel> filtered = applyNERFilter(questionType, bestSentence);
@@ -107,11 +109,25 @@ public class Sherlock {
      * Finds the best sentence in the document by comparing bags of words in the question to bags of words of each
      * sentence.
      * @param question The question to compare with
-     * @param sentences All the sentences in the document
+     * @param document All the sentences in the document
      * @return The best sentence in the document
      */
-    private CoreMap findBestByBagging(List<CoreLabel> question, List<CoreMap> sentences) {
-        Set<String> questionBag = getBagOfWords(question);
+    private CoreMap findBestByBagging(CoreMap question, Annotation document) {
+        Set<String> questionBag = getBagOfWords(question.get(CoreAnnotations.TokensAnnotation.class));
+
+        Collection<CorefChain> corefChains = document.get(CorefCoreAnnotations.CorefChainAnnotation.class).values();
+
+        Map<List<Integer>, List<CoreLabel>> corefTokens = Util.mapOf();
+
+        for(CorefChain chain : corefChains) {
+            List<Integer> sentenceIndices = chain.getMentionsInTextualOrder().stream()
+                    .map(mention -> mention.sentNum - 1)
+                    .collect(Collectors.toList());
+            List<CoreLabel> tokens = findAllMentions(document, chain);
+            corefTokens.put(sentenceIndices, tokens);
+        }
+
+        List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
 
         double bestScore = 0;
         int bestSize = 0;
@@ -144,6 +160,25 @@ public class Sherlock {
         }
 
         return bestAnswer;
+    }
+
+    private List<CoreLabel> findAllMentions(Annotation document, CorefChain chain) {
+        return chain.getMentionsInTextualOrder().stream()
+                .flatMap(mention -> getTokensBetween(document, mention.sentNum - 1, mention.startIndex - 1, mention.endIndex - 1).stream())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Gets some tokens from a sentence in a document
+     * @param document
+     * @param sentenceNumber
+     * @param start The token start index
+     * @param end The token end index
+     * @return A chunk of the tokens in the sentence
+     */
+    private List<CoreLabel> getTokensBetween(Annotation document, int sentenceNumber, int start, int end) {
+        CoreMap sentence = document.get(CoreAnnotations.SentencesAnnotation.class).get(sentenceNumber);
+        return sentence.get(CoreAnnotations.TokensAnnotation.class).subList(start, end);
     }
 
     /**
@@ -231,20 +266,5 @@ public class Sherlock {
         }
 
         return out.toString();
-    }
-
-    /**
-     * Builds a list of tokens from a string of input.
-     * @param input The string to tokenize
-     * @return The list of tokens
-     */
-    public static List<CoreLabel> tokenizeString(String input) {
-        PTBTokenizer<CoreLabel> tokenizer = new PTBTokenizer<>(new StringReader(input),
-                new CoreLabelTokenFactory(), "invertible=true");
-        List<CoreLabel> out = new ArrayList<>();
-        while(tokenizer.hasNext()) {
-            out.add(tokenizer.next());
-        }
-        return out;
     }
 }
