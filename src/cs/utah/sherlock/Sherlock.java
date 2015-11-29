@@ -172,10 +172,21 @@ public class Sherlock {
         return getTokens(getSentence(document, bestIndex));
     }
 
+    /**
+     * Get the sentence at the index in the document
+     * @param document
+     * @param index
+     * @return the target sentence
+     */
     private CoreMap getSentence(Annotation document, int index) {
         return document.get(CoreAnnotations.SentencesAnnotation.class).get(index);
     }
 
+    /**
+     * Get the tokens from the coremap
+     * @param annotatedSentence
+     * @return List of tokens in the coremap
+     */
     private List<CoreLabel> getTokens(CoreMap annotatedSentence) {
         return annotatedSentence.get(CoreAnnotations.TokensAnnotation.class);
     }
@@ -239,6 +250,10 @@ public class Sherlock {
 
             return output;
         }
+    }
+
+    private List<CoreLabel> replaceWithBaseMention(Annotation document, int sentenceNum){
+
     }
 
     /**
