@@ -55,7 +55,6 @@ public class Sherlock {
     }
 
 
-    // TODO: Use coreference resolution to replace later instances with original, this will improve bagging
     // TODO: Get wordnet, use it to semantic classification of the head noun in each NP
     // TODO: Implement Ellen's rules for different question types
 
@@ -79,9 +78,9 @@ public class Sherlock {
         // answer each question
         for(Story.Question question : story.questions) {
             // run the question through the pipeline
-            Annotation bullshitAnnotationObject = new Annotation(question.question);
-            pipeline.annotate(bullshitAnnotationObject);
-            CoreMap annotatedQuestion = bullshitAnnotationObject.get(CoreAnnotations.SentencesAnnotation.class).get(0);
+            Annotation annotationObject = new Annotation(question.question);
+            pipeline.annotate(annotationObject);
+            CoreMap annotatedQuestion = annotationObject.get(CoreAnnotations.SentencesAnnotation.class).get(0);
 
             List<CoreLabel> questionTokens = annotatedQuestion.get(CoreAnnotations.TokensAnnotation.class);
 
@@ -90,11 +89,11 @@ public class Sherlock {
             // ignore the first word of the question when doing bagging
             questionTokens.remove(0);
 
-            // TODO: calculate a bag of words that also contains all coreferent terms
             CoreMap bestSentence = findBestByBagging(annotatedQuestion, document);
 
             // Might remove everything
             List<CoreLabel> filtered = applyNERFilter(questionType, bestSentence);
+
             // Best is not necessarily the whole sentence; it might be just people/organizations, depending on the question
             List<CoreLabel> best = filtered.size() > 0 ? filtered : bestSentence.get(CoreAnnotations.TokensAnnotation.class);
 
@@ -119,9 +118,11 @@ public class Sherlock {
         Map<List<Integer>, List<CoreLabel>> corefMap = Util.mapOf();
 
         for(CorefChain chain : corefChains) {
+            // Get the list of indices which corefer to the given chain
             List<Integer> sentenceIndices = chain.getMentionsInTextualOrder().stream()
                     .map(mention -> mention.sentNum - 1)
                     .collect(Collectors.toList());
+            // Get the list of tokens which corefer to the given chain
             List<CoreLabel> tokens = findAllMentions(document, chain);
             corefMap.put(sentenceIndices, tokens);
         }
@@ -134,6 +135,7 @@ public class Sherlock {
         for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++){
             CoreMap sentence = sentences.get(sentenceNum);
 
+            // Find which tokens this sentence contains references to
             List<CoreLabel> corefTokens = new ArrayList<>();
             for(Map.Entry<List<Integer>, List<CoreLabel>> entry : corefMap.entrySet()) {
                 List<Integer> indices = entry.getKey();
@@ -142,17 +144,14 @@ public class Sherlock {
                 }
             }
 
-            // Split into verbs and not verbs
-            //Tree sentenceTree = sentence.get(TreeCoreAnnotations.TreeAnnotation.class);
+            // Split into lists of verbs and not verbs
             corefTokens.addAll(sentence.get(CoreAnnotations.TokensAnnotation.class));
             Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(corefTokens);
 
             // Weigh the verbs higher than words that are not verbs, as per Ellen's paper
-            //List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
             int sentenceSize = verbNotVerb.first().size() + verbNotVerb.second().size();
             Set<String> verbIntersection = getBagOfWords(verbNotVerb.first());
             Set<String> notVerbIntersection = getBagOfWords(verbNotVerb.second());
-//            Set<String> intersection = getBagOfWords(verbIntersection);
             verbIntersection.retainAll(questionBag);
             notVerbIntersection.retainAll(questionBag);
 
@@ -171,6 +170,12 @@ public class Sherlock {
         return bestAnswer;
     }
 
+    /**
+     * Finds all the mentions of the chain in the document
+     * @param document
+     * @param chain
+     * @return
+     */
     private List<CoreLabel> findAllMentions(Annotation document, CorefChain chain) {
         return chain.getMentionsInTextualOrder().stream()
                 .flatMap(mention -> getTokensBetween(document, mention.sentNum - 1, mention.startIndex - 1, mention.endIndex - 1).stream())
@@ -236,6 +241,12 @@ public class Sherlock {
     class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$BasicDependenciesAnnotation,
     class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$CollapsedCCProcessedDependenciesAnnotation,
     class edu.stanford.nlp.semgraph.SemanticGraphCoreAnnotations$AlternativeDependenciesAnnotation */
+
+    /**
+     * Returns a pair of lists: the tokens that are verbs and the tokens that are not verbs, respectively.
+     * @param sentence - the sentence tokens plus the coreference tokens
+     * @return
+     */
     private Util.Pair<List<CoreLabel>, List<CoreLabel>> getVerbsAndNotVerbs(List<CoreLabel> sentence){
         List<CoreLabel> verbs = Util.listOf();
         List<CoreLabel> notVerbs = Util.listOf();
