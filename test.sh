@@ -1,7 +1,7 @@
 #!/bin/bash
 
 verbose=false
-name="developset"
+name="all-data"
 
 while getopts ":n:v" opt; do
   case $opt in
