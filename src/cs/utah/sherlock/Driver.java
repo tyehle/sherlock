@@ -103,24 +103,6 @@ public class Driver {
         return ids;
     }
 
-    public static void alphabetizeManifest(String manifest) {
-        List<String> strings = new ArrayList<>();
-        try (Scanner in = new Scanner(new File(manifest))) {
-            if(in.hasNextLine()) strings.add(new File(in.nextLine()).getCanonicalPath() + File.separator);
-            while(in.hasNextLine()) {
-                strings.add(in.nextLine());
-            }
-
-            Collections.sort(strings);
-
-            for(String s : strings)
-                System.out.println(s);
-        }
-        catch (IOException e) {
-            System.err.println(e.getMessage());
-        }
-    }
-
     /**
      * Answers all the questions about a particular story.
      * @param story The story to answer questions about
