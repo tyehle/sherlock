@@ -2,6 +2,7 @@ package cs.utah.sherlock;
 
 import edu.stanford.nlp.dcoref.CorefChain;
 import edu.stanford.nlp.dcoref.CorefCoreAnnotations;
+import edu.stanford.nlp.ling.CoreAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
@@ -89,13 +90,13 @@ public class Sherlock {
             // ignore the first word of the question when doing bagging
             questionTokens.remove(0);
 
-            CoreMap bestSentence = findBestByBagging(annotatedQuestion, document);
+            List<CoreLabel> bestSentence = findBestByBagging(annotatedQuestion, document);
 
             // Might remove everything
             List<CoreLabel> filtered = applyNERFilter(questionType, bestSentence);
 
             // Best is not necessarily the whole sentence; it might be just people/organizations, depending on the question
-            List<CoreLabel> best = filtered.size() > 0 ? filtered : bestSentence.get(CoreAnnotations.TokensAnnotation.class);
+            List<CoreLabel> best = filtered.size() > 0 ? filtered : bestSentence;
 
             questionAnswers.put(question, rebuildSentence(best));
         }
@@ -110,7 +111,7 @@ public class Sherlock {
      * @param document All the sentences in the document
      * @return The best sentence in the document
      */
-    private CoreMap findBestByBagging(CoreMap question, Annotation document) {
+    private List<CoreLabel> findBestByBagging(CoreMap question, Annotation document) {
         Set<String> questionBag = getBagOfWords(question.get(CoreAnnotations.TokensAnnotation.class));
 
         Collection<CorefChain> corefChains = document.get(CorefCoreAnnotations.CorefChainAnnotation.class).values();
@@ -131,9 +132,9 @@ public class Sherlock {
 
         double bestScore = 0;
         int bestSize = 0;
-        CoreMap bestAnswer = null;
+        List<CoreLabel> bestAnswer = Util.listOf();
         for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++){
-            CoreMap sentence = sentences.get(sentenceNum);
+            List<CoreLabel> sentence = sentences.get(sentenceNum).get(CoreAnnotations.TokensAnnotation.class);
 
             // Find which tokens this sentence contains references to
             List<CoreLabel> corefTokens = new ArrayList<>();
@@ -145,8 +146,8 @@ public class Sherlock {
             }
 
             // Split into lists of verbs and not verbs
-            corefTokens.addAll(sentence.get(CoreAnnotations.TokensAnnotation.class));
-            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(corefTokens);
+            sentence.addAll(corefTokens);
+            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(sentence);
 
             // Weigh the verbs higher than words that are not verbs, as per Ellen's paper
             int sentenceSize = verbNotVerb.first().size() + verbNotVerb.second().size();
@@ -201,16 +202,15 @@ public class Sherlock {
      * @param sentence The sentence to filter
      * @return All the words matching the allowed annotations, or the sentence if the key was not valid
      */
-    private List<CoreLabel> applyNERFilter(String key, CoreMap sentence) {
-        List<CoreLabel> tokens = sentence.get(CoreAnnotations.TokensAnnotation.class);
+    private List<CoreLabel> applyNERFilter(String key, List<CoreLabel> sentence) {
         if(nerFilter.containsKey(key)) {
-            return tokens.stream().filter(token -> {
+            return sentence.stream().filter(token -> {
                 String nerTag = token.get(CoreAnnotations.NamedEntityTagAnnotation.class);
                 return nerFilter.get(key).contains(nerTag);
             }).collect(Collectors.toList());
         }
         else {
-            return tokens;
+            return sentence;
         }
     }
 
