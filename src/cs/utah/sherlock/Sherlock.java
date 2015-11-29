@@ -2,7 +2,6 @@ package cs.utah.sherlock;
 
 import edu.stanford.nlp.dcoref.CorefChain;
 import edu.stanford.nlp.dcoref.CorefCoreAnnotations;
-import edu.stanford.nlp.ling.CoreAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
@@ -81,9 +80,9 @@ public class Sherlock {
             // run the question through the pipeline
             Annotation annotationObject = new Annotation(question.question);
             pipeline.annotate(annotationObject);
-            CoreMap annotatedQuestion = annotationObject.get(CoreAnnotations.SentencesAnnotation.class).get(0);
+            CoreMap annotatedQuestion = getSentence(annotationObject, 0);
 
-            List<CoreLabel> questionTokens = annotatedQuestion.get(CoreAnnotations.TokensAnnotation.class);
+            List<CoreLabel> questionTokens = getTokens(annotatedQuestion);
 
             String questionType = questionTokens.get(0).word().toLowerCase();
 
@@ -112,7 +111,7 @@ public class Sherlock {
      * @return The best sentence in the document
      */
     private List<CoreLabel> findBestByBagging(CoreMap question, Annotation document) {
-        Set<String> questionBag = getBagOfWords(question.get(CoreAnnotations.TokensAnnotation.class));
+        Set<String> questionBag = getBagOfWords(getTokens(question));
 
         Collection<CorefChain> corefChains = document.get(CorefCoreAnnotations.CorefChainAnnotation.class).values();
 
@@ -132,9 +131,9 @@ public class Sherlock {
 
         double bestScore = 0;
         int bestSize = 0;
-        List<CoreLabel> bestAnswer = Util.listOf();
+        int bestIndex = -1;
         for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++){
-            List<CoreLabel> sentence = sentences.get(sentenceNum).get(CoreAnnotations.TokensAnnotation.class);
+            List<CoreLabel> sentence = getTokens(sentences.get(sentenceNum));
 
             // Find which tokens this sentence contains references to
             List<CoreLabel> corefTokens = new ArrayList<>();
@@ -146,8 +145,9 @@ public class Sherlock {
             }
 
             // Split into lists of verbs and not verbs
-            sentence.addAll(corefTokens);
-            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(sentence);
+            corefTokens.addAll(sentence);
+//            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(corefTokens);
+            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(replaceCorefMentions(document, sentenceNum));
 
             // Weigh the verbs higher than words that are not verbs, as per Ellen's paper
             int sentenceSize = verbNotVerb.first().size() + verbNotVerb.second().size();
@@ -161,14 +161,84 @@ public class Sherlock {
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
             // For now prefer shorter sentences
             if(score > bestScore ||
-                    (score == bestScore && bestAnswer != null && sentenceSize < bestSize)) {
-                bestAnswer = sentence;
+                    (score == bestScore && sentenceSize < bestSize)) {
+                bestIndex = sentenceNum;
                 bestScore = score;
                 bestSize = sentenceSize;
             }
         }
 
-        return bestAnswer;
+//        return replaceCorefMentions(document, bestIndex);
+        return getTokens(getSentence(document, bestIndex));
+    }
+
+    private CoreMap getSentence(Annotation document, int index) {
+        return document.get(CoreAnnotations.SentencesAnnotation.class).get(index);
+    }
+
+    private List<CoreLabel> getTokens(CoreMap annotatedSentence) {
+        return annotatedSentence.get(CoreAnnotations.TokensAnnotation.class);
+    }
+
+    /**
+     * Gets a sentence where all co-referent mentions are replaced with their representative mention.
+     * @param document The document to use
+     * @param sentenceIndex The index of the sentence to do stuff with.
+     * @return The sentence with replaced mentions
+     */
+    private List<CoreLabel> replaceCorefMentions(Annotation document, int sentenceIndex) {
+        Collection<CorefChain> chains = document.get(CorefCoreAnnotations.CorefChainAnnotation.class).values();
+
+        List<Util.Pair<Util.Pair<Integer, Integer>, List<CoreLabel>>> toReplace = Util.listOf();
+
+        // Find all replacements we might have to do
+        for(CorefChain chain : chains) {
+            CorefChain.CorefMention representative = chain.getRepresentativeMention();
+
+            if(representative.sentNum - 1 == sentenceIndex)
+                continue;
+
+            for(CorefChain.CorefMention mention : chain.getMentionsInTextualOrder()) {
+                if(mention.sentNum - 1 == sentenceIndex) {
+                    List<CoreLabel> tokens = getTokensBetween(document, representative.sentNum - 1, representative.startIndex - 1, representative.endIndex - 1);
+                    toReplace.add(Util.pairOf(Util.pairOf(mention.startIndex - 1, mention.endIndex - 1), tokens));
+                }
+            }
+        }
+
+        // sort by start index
+        toReplace.sort((a, b) -> a.first().first().compareTo(b.first().first())); //////// WUT
+
+        List<CoreLabel> sentence = getTokens(getSentence(document, sentenceIndex));
+
+
+        // Build the new sentence
+        if(toReplace.isEmpty()) {
+            return sentence;
+        }
+        else {
+            List<CoreLabel> output = new ArrayList<>(sentence.subList(0, toReplace.get(0).first().first()));
+
+            while (!toReplace.isEmpty()) {
+                output.addAll(toReplace.get(0).second());
+
+                // Remove all replacements that overlap with this one
+                while(toReplace.size() > 1 && toReplace.get(1).first().first() < toReplace.get(0).first().second())
+                    toReplace.remove(1);
+
+                // Add the tokens in between this one and the next one
+                if(toReplace.size() == 1) {
+                    output.addAll(sentence.subList(toReplace.get(0).first().second(), sentence.size()));
+                }
+                else {
+                    output.addAll(sentence.subList(toReplace.get(0).first().second(), toReplace.get(1).first().first()));
+                }
+
+                toReplace.remove(0);
+            }
+
+            return output;
+        }
     }
 
     /**
@@ -192,8 +262,7 @@ public class Sherlock {
      * @return A chunk of the tokens in the sentence
      */
     private List<CoreLabel> getTokensBetween(Annotation document, int sentenceNumber, int start, int end) {
-        CoreMap sentence = document.get(CoreAnnotations.SentencesAnnotation.class).get(sentenceNumber);
-        return sentence.get(CoreAnnotations.TokensAnnotation.class).subList(start, end);
+        return getTokens(getSentence(document, sentenceNumber)).subList(start, end);
     }
 
     /**
