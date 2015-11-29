@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Scanner;
 
 /**
+ * @author Dasha Pruss
  * @author Tobin Yehle
  */
 public class Alphabetizer {
