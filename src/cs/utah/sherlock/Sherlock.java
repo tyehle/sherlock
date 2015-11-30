@@ -20,8 +20,12 @@ import java.util.stream.Collectors;
 public class Sherlock {
 
     public final Set<String> stopWords;
-    private final Set<String> verbTags;
+
+    private final double baggingWeight = 3;
     private final int clue = 3, good_clue = 4, confident = 6, slam_dunk = 20;
+
+    private final Set<String> verbTags;
+    private final Set<String> locationPrepositions;
     private final Set<List<String>> monthNames;
     private final Set<List<String>> days;
 
@@ -48,6 +52,8 @@ public class Sherlock {
         this.stopWords = new HashSet<>(Util.readLines(stopWordsFile));
 
         this.verbTags = Util.setOf("VB", "VBD", "VBG", "VBN", "VBP", "VBZ");
+
+        locationPrepositions = Util.setOf("in", "at", "near", "inside"); // TODO: Make this list bigger
 
         // build the ner filter
         // NER-TAGS: Location, Person, Organization, Money, Percent, Date, Time
@@ -165,22 +171,27 @@ public class Sherlock {
         verbIntersection.retainAll(questionBag);
         notVerbIntersection.retainAll(questionBag);
 
-        return verbIntersection.size()*verbWeight + notVerbIntersection.size();
+        return baggingWeight*(verbIntersection.size()*verbWeight + notVerbIntersection.size());
     }
 
     private double getPointsByQuestionType(CoreMap question, CoreMap sentence){
-        double points = 0;
-        // TODO: Change this to figure out question type more smartly
         String questionType = getQuestionType(question);
 
-        if(questionType.equals("what"))
-            return getPointsForWhat(question, sentence);
-        else if(questionType.equals("who"))
-            return getPointsForWho(question, sentence);
-        else if(questionType.equals("where"))
-            return getPointsForWhere(question, sentence);
-        //System.out.println("Question type not found: " + questionType);
-        return points;
+        switch (questionType) {
+            case "what":
+                return getPointsForWhat(question, sentence);
+            case "who":
+                return getPointsForWho(question, sentence);
+            case "where":
+                return getPointsForWhere(question, sentence);
+            case "when":
+                return getPointsForWhen(question, sentence);
+            case "why":
+                return getPointsForWhy(question, sentence);
+            default:
+                //System.out.println("Question type not found: " + questionType);
+                return 0;
+        }
     }
 
 
@@ -232,8 +243,12 @@ public class Sherlock {
         int score = 0;
 
         // If sentence contains LocationPrep, good clue
+        if(sentenceContainsAny(makePhrases(locationPrepositions), sentence))
+            score += good_clue;
 
         // If sentence contains LOCATION, confident
+        if(containsNamedEntity(Util.setOf("LOCATION", "ORGANIZATION"), sentence))
+            score += confident;
 
         return score;
     }
@@ -242,11 +257,16 @@ public class Sherlock {
         int score = 0;
 
         // If sentence contains TIME, good_clue
+        if(containsNamedEntity(Util.setOf("DATE", "TIME"), sentence))
+            score += good_clue;
 
         // If question contains "the last" AND sentence contains first, last, since, or ago, slam_dunk
+        if(sentenceContainsAny(Util.setOf(Util.listOf("the", "last")), question) && sentenceContainsAny(makePhrases(Util.setOf("first", "last", "since", "ago")), sentence))
+            score += slam_dunk;
 
         // If question contains start or begin AND sentence contains start, begin, since, or year, slam_dunk
-
+        if(sentenceContainsAny(makePhrases(Util.setOf("start", "begin")), question) && sentenceContainsAny(makePhrases(Util.setOf("start", "begin", "since", "year")), sentence))
+            score += slam_dunk;
 
         return score;
     }
@@ -254,17 +274,26 @@ public class Sherlock {
     private double getPointsForWhy(CoreMap question, CoreMap sentence){
         int score = 0;
 
-
+        // TODO: not really sure how to implement this with our current framework
 
         return score;
     }
 
+    /**
+     * Checks if any of a set of phrases exist in a sentence.
+     * @param phrases The phrases to check for
+     * @param sentence The sentence to check in
+     * @return If any of the phrases were in the sentence
+     */
     private boolean sentenceContainsAny(Set<List<String>> phrases, CoreMap sentence){
         List<String> tokens = getTokens(sentence).stream().map(this::stem).collect(Collectors.toList());
 
         for(int tokenNum = 0; tokenNum < tokens.size(); tokenNum++){
             for(List<String> phrase : phrases){
-                if(tokens.size() >= tokenNum + phrase.size() && tokens.subList(tokenNum, tokenNum+phrase.size()).equals(phrase))
+                if(tokens.size() >= tokenNum + phrase.size() &&
+                        tokens.subList(tokenNum, tokenNum+phrase.size()).equals(phrase.stream()
+                                .map(this::stem)
+                                .collect(Collectors.toList())))
                     return true;
             }
         }
@@ -272,6 +301,12 @@ public class Sherlock {
         return false;
     }
 
+    /**
+     * Checks inf a named entity tag exists in a sentence.
+     * @param nerTags The NER tags to check for
+     * @param sentence The sentence to check in
+     * @return If any of the words in the sentence were tagged with the given NER tags
+     */
     private boolean containsNamedEntity(Set<String> nerTags, CoreMap sentence){
         List<String> tokenNerTags = getTokens(sentence).stream().map(token -> token.get(CoreAnnotations.NamedEntityTagAnnotation.class))
                 .collect(Collectors.toList());
@@ -279,6 +314,11 @@ public class Sherlock {
         return tokenNerTags.size() > 0;
     }
 
+    /**
+     * Builds phrases out of single words.
+     * @param words The words to build the phrases from
+     * @return A set of lists, each of which contains a single word
+     */
     private Set<List<String>> makePhrases(Set<String> words){
         return words.stream().map(Util::listOf).collect(Collectors.toSet());
     }
@@ -302,10 +342,30 @@ public class Sherlock {
         return annotatedSentence.get(CoreAnnotations.TokensAnnotation.class);
     }
 
+    /**
+     * Gets the stem of the given word.
+     * @param word The word to stem
+     * @return The stem of the word
+     */
     private String stem(CoreLabel word){
         return morph.stem(word.word());
     }
 
+    /**
+     * Gets the stem of the given word.
+     * @param word The word to stem
+     * @return The stem of the word
+     */
+    private String stem(String word){
+        return morph.stem(word);
+    }
+
+    /**
+     * Find the type of question asked by a given sentence
+     * @param question The question to look at
+     * @return The type of the question. This is usually the first word of the question, ie. Why.
+     */
+    // TODO: Change this to figure out question type more smartly
     private String getQuestionType(CoreMap question){
         return getTokens(question).get(0).word().toLowerCase();
     }
@@ -369,6 +429,25 @@ public class Sherlock {
 
             return output;
         }
+    }
+
+    // TODO: Maybe use this to try to find sentences that are coreferent with the question
+    /**
+     * Tells if some sentences contain coreferent items.
+     * @param document The document
+     * @param sentences The potentially coreferent sentences
+     * @return If the sentences all contained the same coreferent element
+     */
+    private boolean areCoreferent(Annotation document, int... sentences) {
+        Collection<CorefChain> chains = document.get(CorefCoreAnnotations.CorefChainAnnotation.class).values();
+        for(CorefChain chain : chains) {
+            List<Integer> sentenceNumbers = chain.getMentionsInTextualOrder().stream()
+                    .map(mention -> mention.sentNum - 1)
+                    .collect(Collectors.toList());
+            if(sentenceNumbers.containsAll(Arrays.asList(sentences)))
+                return true;
+        }
+        return false;
     }
 
     /**
