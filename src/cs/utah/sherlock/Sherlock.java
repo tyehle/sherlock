@@ -12,6 +12,7 @@ import edu.stanford.nlp.util.CoreMap;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author Tobin Yehle
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 public class Sherlock {
 
     public final Set<String> stopWords;
+    private final Set<String> questionWords;
 
     private final double baggingWeight = 3;
     private final int clue = 3, good_clue = 4, confident = 6, slam_dunk = 20;
@@ -54,6 +56,8 @@ public class Sherlock {
         this.verbTags = Util.setOf("VB", "VBD", "VBG", "VBN", "VBP", "VBZ");
 
         locationPrepositions = Util.setOf("in", "at", "near", "inside"); // TODO: Make this list bigger
+
+        questionWords = Util.setOf("who", "where", "when", "what", "why", "how");
 
         // build the ner filter
         // NER-TAGS: Location, Person, Organization, Money, Percent, Date, Time
@@ -188,12 +192,13 @@ public class Sherlock {
                 return getPointsForWhen(question, sentence);
             case "why":
                 return getPointsForWhy(question, sentence);
+            case "how":
+                return getPointsForHow(question, sentence);
             default:
                 //System.out.println("Question type not found: " + questionType);
                 return 0;
         }
     }
-
 
 
     private int getPointsForWhat(CoreMap question, CoreMap sentence){
@@ -277,6 +282,10 @@ public class Sherlock {
         // TODO: not really sure how to implement this with our current framework
 
         return score;
+    }
+
+    private double getPointsForHow(CoreMap question, CoreMap sentence) {
+        return 0;
     }
 
     /**
@@ -366,8 +375,12 @@ public class Sherlock {
      * @return The type of the question. This is usually the first word of the question, ie. Why.
      */
     // TODO: Change this to figure out question type more smartly
-    private String getQuestionType(CoreMap question){
-        return getTokens(question).get(0).word().toLowerCase();
+    private String getQuestionType(CoreMap question) {
+        Stream<String> words = getTokens(question).stream().map(word -> word.word().toLowerCase());
+        Stream<String> askingWords = words.filter(questionWords::contains);
+        Optional<String> firstAsk = askingWords.findFirst();
+
+        return firstAsk.orElseGet(() -> getTokens(question).get(0).word());
     }
 
     /**
