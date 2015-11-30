@@ -285,7 +285,12 @@ public class Sherlock {
     }
 
     private double getPointsForHow(CoreMap question, CoreMap sentence) {
-        return 0;
+        double score = 0;
+
+        if(sentenceContainsAny(makePhrases(Util.setOf("much", "many")), question) && containsNamedEntity(Util.setOf("MONEY", "PERCENT"), sentence))
+            score += good_clue;
+
+        return score;
     }
 
     /**
