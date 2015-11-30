@@ -117,13 +117,11 @@ public class Sherlock {
         double bestScore = 0;
         int bestSize = 0;
         int bestIndex = -1;
-        for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++){
-            List<CoreLabel> sentence = getTokens(sentences.get(sentenceNum));
-
+        for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++) {
             // Gives you the score based on intersection after bagging
-            double score = getPointsByBagging(document, sentenceNum, sentence, question);
+            double score = getPointsByBagging(document, sentenceNum, question);
 
-            int sentenceSize = getTokens(getSentence(document, sentenceNum)).size();
+            int sentenceSize = replaceCorefMentions(document, sentenceNum).size();
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
             // For now prefer shorter sentences
             if(score > bestScore ||
@@ -140,13 +138,12 @@ public class Sherlock {
 
     /**
      * Calculate intersection of bagged words to compute a score
-     * @param document
-     * @param sentenceNum
-     * @param sentence
-     * @param question
+     * @param document All sentences
+     * @param sentenceNum The sentence to consider
+     * @param question The question to consider
      * @return score
      */
-    private double getPointsByBagging(Annotation document, int sentenceNum, List<CoreLabel> sentence, CoreMap question){
+    private double getPointsByBagging(Annotation document, int sentenceNum, CoreMap question){
         Set<String> questionBag = getBagOfWords(getTokens(question));
 
         // Split into lists of verbs and not verbs
@@ -159,13 +156,12 @@ public class Sherlock {
         notVerbIntersection.retainAll(questionBag);
 
         return verbIntersection.size()*verbWeight + notVerbIntersection.size();
-
     }
 
     /**
      * Get the sentence at the index in the document
-     * @param document
-     * @param index
+     * @param document All sentences
+     * @param index The index of the sentence to get
      * @return the target sentence
      */
     private CoreMap getSentence(Annotation document, int index) {
@@ -173,9 +169,9 @@ public class Sherlock {
     }
 
     /**
-     * Get the tokens from the coremap
-     * @param annotatedSentence
-     * @return List of tokens in the coremap
+     * Get the tokens from the core map
+     * @param annotatedSentence The sentence to the the tokens from
+     * @return List of tokens in the core map
      */
     private List<CoreLabel> getTokens(CoreMap annotatedSentence) {
         return annotatedSentence.get(CoreAnnotations.TokensAnnotation.class);
@@ -243,21 +239,9 @@ public class Sherlock {
     }
 
     /**
-     * Finds all the mentions of the chain in the document
-     * @param document
-     * @param chain
-     * @return
-     */
-    private List<CoreLabel> findAllMentions(Annotation document, CorefChain chain) {
-        return chain.getMentionsInTextualOrder().stream()
-                .flatMap(mention -> getTokensBetween(document, mention.sentNum - 1, mention.startIndex - 1, mention.endIndex - 1).stream())
-                .collect(Collectors.toList());
-    }
-
-    /**
      * Gets some tokens from a sentence in a document
-     * @param document
-     * @param sentenceNumber
+     * @param document All sentences
+     * @param sentenceNumber The sentence number to extract tokens from
      * @param start The token start index
      * @param end The token end index
      * @return A chunk of the tokens in the sentence
@@ -315,7 +299,7 @@ public class Sherlock {
     /**
      * Returns a pair of lists: the tokens that are verbs and the tokens that are not verbs, respectively.
      * @param sentence - the sentence tokens plus the coreference tokens
-     * @return
+     * @return A pair of all the verbs in the sentence, and all the other words in the sentence
      */
     private Util.Pair<List<CoreLabel>, List<CoreLabel>> getVerbsAndNotVerbs(List<CoreLabel> sentence){
         List<CoreLabel> verbs = Util.listOf();
