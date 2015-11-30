@@ -89,7 +89,7 @@ public class Sherlock {
             // ignore the first word of the question when doing bagging
             questionTokens.remove(0);
 
-            List<CoreLabel> bestSentence = findBestByBagging(annotatedQuestion, document);
+            List<CoreLabel> bestSentence = findBestSentence(annotatedQuestion, document);
 
             // Might remove everything
             List<CoreLabel> filtered = applyNERFilter(questionType, bestSentence);
@@ -110,22 +110,7 @@ public class Sherlock {
      * @param document All the sentences in the document
      * @return The best sentence in the document
      */
-    private List<CoreLabel> findBestByBagging(CoreMap question, Annotation document) {
-        Set<String> questionBag = getBagOfWords(getTokens(question));
-
-        Collection<CorefChain> corefChains = document.get(CorefCoreAnnotations.CorefChainAnnotation.class).values();
-
-        Map<List<Integer>, List<CoreLabel>> corefMap = Util.mapOf();
-
-        for(CorefChain chain : corefChains) {
-            // Get the list of indices which corefer to the given chain
-            List<Integer> sentenceIndices = chain.getMentionsInTextualOrder().stream()
-                    .map(mention -> mention.sentNum - 1)
-                    .collect(Collectors.toList());
-            // Get the list of tokens which corefer to the given chain
-            List<CoreLabel> tokens = findAllMentions(document, chain);
-            corefMap.put(sentenceIndices, tokens);
-        }
+    private List<CoreLabel> findBestSentence(CoreMap question, Annotation document) {
 
         List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
 
@@ -135,29 +120,10 @@ public class Sherlock {
         for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++){
             List<CoreLabel> sentence = getTokens(sentences.get(sentenceNum));
 
-            // Find which tokens this sentence contains references to
-            List<CoreLabel> corefTokens = new ArrayList<>();
-            for(Map.Entry<List<Integer>, List<CoreLabel>> entry : corefMap.entrySet()) {
-                List<Integer> indices = entry.getKey();
-                if(indices.contains(sentenceNum)) {
-                    corefTokens.addAll(entry.getValue());
-                }
-            }
+            // Gives you the score based on intersection after bagging
+            double score = getPointsByBagging(document, sentenceNum, sentence, question);
 
-            // Split into lists of verbs and not verbs
-            corefTokens.addAll(sentence);
-//            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(corefTokens);
-            Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(replaceCorefMentions(document, sentenceNum));
-
-            // Weigh the verbs higher than words that are not verbs, as per Ellen's paper
-            int sentenceSize = verbNotVerb.first().size() + verbNotVerb.second().size();
-            Set<String> verbIntersection = getBagOfWords(verbNotVerb.first());
-            Set<String> notVerbIntersection = getBagOfWords(verbNotVerb.second());
-            verbIntersection.retainAll(questionBag);
-            notVerbIntersection.retainAll(questionBag);
-
-            double score = verbIntersection.size()*verbWeight + notVerbIntersection.size();
-
+            int sentenceSize = getTokens(getSentence(document, sentenceNum)).size();
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
             // For now prefer shorter sentences
             if(score > bestScore ||
@@ -170,6 +136,30 @@ public class Sherlock {
 
 //        return replaceCorefMentions(document, bestIndex);
         return getTokens(getSentence(document, bestIndex));
+    }
+
+    /**
+     * Calculate intersection of bagged words to compute a score
+     * @param document
+     * @param sentenceNum
+     * @param sentence
+     * @param question
+     * @return score
+     */
+    private double getPointsByBagging(Annotation document, int sentenceNum, List<CoreLabel> sentence, CoreMap question){
+        Set<String> questionBag = getBagOfWords(getTokens(question));
+
+        // Split into lists of verbs and not verbs
+        Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(replaceCorefMentions(document, sentenceNum));
+
+        // Weigh the verbs higher than words that are not verbs, as per Ellen's paper
+        Set<String> verbIntersection = getBagOfWords(verbNotVerb.first());
+        Set<String> notVerbIntersection = getBagOfWords(verbNotVerb.second());
+        verbIntersection.retainAll(questionBag);
+        notVerbIntersection.retainAll(questionBag);
+
+        return verbIntersection.size()*verbWeight + notVerbIntersection.size();
+
     }
 
     /**
@@ -250,10 +240,6 @@ public class Sherlock {
 
             return output;
         }
-    }
-
-    private List<CoreLabel> replaceWithBaseMention(Annotation document, int sentenceNum){
-
     }
 
     /**
