@@ -209,22 +209,32 @@ public class Sherlock {
         return score;
     }
 
-    private double getPointsForWho(CoreMap question, CoreMap sentence){
+    private int getPointsForWho(CoreMap question, CoreMap sentence){
+        int score = 0;
         // If question doesn't contain NAME AND sentence contains NAME, then we're confident
+        if(!containsNamedEntity(Util.setOf("PERSON", "ORGANIZATION"), question)
+                && containsNamedEntity(Util.setOf("PERSON", "ORGANIZATION"), sentence))
+            score += confident;
 
         // If question doesn't contain NAME AND sentence contains name, then it's a good clue
+        if(!containsNamedEntity(Util.setOf("PERSON", "ORGANIZATION"), question)
+                && sentenceContainsAny(Util.setOf(Util.listOf("name")), sentence))
+            score += good_clue;
 
         // If sentence contains NAME or HUMAN, then it's a good clue
+        if(containsNamedEntity(Util.setOf("PERSON", "ORGANIZATION"), question))
+            score += good_clue;
 
-        return 0;
+        return score;
     }
 
     private double getPointsForWhere(CoreMap question, CoreMap sentence){
-        return 0;
+        int score = 0;
+        return score;
     }
 
     private boolean sentenceContainsAny(Set<List<String>> phrases, CoreMap sentence){
-        List<String> tokens = getTokens(sentence).stream().map(CoreLabel::word).collect(Collectors.toList());
+        List<String> tokens = getTokens(sentence).stream().map(this::stem).collect(Collectors.toList());
 
         for(int tokenNum = 0; tokenNum < tokens.size(); tokenNum++){
             for(List<String> phrase : phrases){
@@ -234,6 +244,13 @@ public class Sherlock {
         }
 
         return false;
+    }
+
+    private boolean containsNamedEntity(Set<String> nerTags, CoreMap sentence){
+        List<String> tokenNerTags = getTokens(sentence).stream().map(token -> token.get(CoreAnnotations.NamedEntityTagAnnotation.class))
+                .collect(Collectors.toList());
+        tokenNerTags.retainAll(nerTags);
+        return tokenNerTags.size() > 0;
     }
 
     private Set<List<String>> makePhrases(Set<String> words){
