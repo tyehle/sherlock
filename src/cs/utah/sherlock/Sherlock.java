@@ -11,7 +11,6 @@ import edu.stanford.nlp.util.CoreMap;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -92,12 +91,7 @@ public class Sherlock {
             pipeline.annotate(annotationObject);
             CoreMap annotatedQuestion = getSentence(annotationObject, 0);
 
-            List<CoreLabel> questionTokens = getTokens(annotatedQuestion);
-
-            String questionType = questionTokens.get(0).word().toLowerCase();
-
-            // ignore the first word of the question when doing bagging
-            questionTokens.remove(0);
+            String questionType = getQuestionType(annotatedQuestion);
 
             List<CoreLabel> bestSentence = findBestSentence(annotatedQuestion, document);
 
@@ -136,8 +130,6 @@ public class Sherlock {
             score += getPointsByQuestionType(question, sentence);
 
             int sentenceSize = replaceCorefMentions(document, sentenceNum).size();
-            // TODO: Implement rules for WHO and WHAT
-
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
             // For now prefer shorter sentences
             if(score > bestScore ||
@@ -160,7 +152,9 @@ public class Sherlock {
      * @return score
      */
     private double getPointsByBagging(Annotation document, int sentenceNum, CoreMap question){
-        Set<String> questionBag = getBagOfWords(getTokens(question));
+        List<CoreLabel> tokensCopy = new ArrayList<>(getTokens(question));
+        tokensCopy.remove(0);
+        Set<String> questionBag = getBagOfWords(tokensCopy);
 
         // Split into lists of verbs and not verbs
         Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(replaceCorefMentions(document, sentenceNum));
@@ -177,14 +171,15 @@ public class Sherlock {
     private double getPointsByQuestionType(CoreMap question, CoreMap sentence){
         double points = 0;
         // TODO: Change this to figure out question type more smartly
-        String questionType = getTokens(question).get(0).word().toLowerCase();
+        String questionType = getQuestionType(question);
+
         if(questionType.equals("what"))
             return getPointsForWhat(question, sentence);
         else if(questionType.equals("who"))
             return getPointsForWho(question, sentence);
         else if(questionType.equals("where"))
             return getPointsForWhere(question, sentence);
-
+        //System.out.println("Question type not found: " + questionType);
         return points;
     }
 
@@ -266,6 +261,10 @@ public class Sherlock {
 
     private String stem(CoreLabel word){
         return morph.stem(word.word());
+    }
+
+    private String getQuestionType(CoreMap question){
+        return getTokens(question).get(0).word().toLowerCase();
     }
 
     /**
