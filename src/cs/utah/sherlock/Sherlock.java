@@ -230,6 +230,32 @@ public class Sherlock {
 
     private double getPointsForWhere(CoreMap question, CoreMap sentence){
         int score = 0;
+
+        // If sentence contains LocationPrep, good clue
+
+        // If sentence contains LOCATION, confident
+
+        return score;
+    }
+
+    private double getPointsForWhen(CoreMap question, CoreMap sentence){
+        int score = 0;
+
+        // If sentence contains TIME, good_clue
+
+        // If question contains "the last" AND sentence contains first, last, since, or ago, slam_dunk
+
+        // If question contains start or begin AND sentence contains start, begin, since, or year, slam_dunk
+
+
+        return score;
+    }
+
+    private double getPointsForWhy(CoreMap question, CoreMap sentence){
+        int score = 0;
+
+
+
         return score;
     }
 
