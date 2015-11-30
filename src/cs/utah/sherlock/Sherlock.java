@@ -22,10 +22,14 @@ public class Sherlock {
 
     public final Set<String> stopWords;
     private final Set<String> verbTags;
+    private final int clue = 3, good_clue = 4, confident = 6, slam_dunk = 20;
+    private final Set<List<String>> monthNames;
+    private final Set<List<String>> days;
 
     private Map<String, Set<String>> nerFilter;
     private StanfordCoreNLP pipeline;
     private double verbWeight;
+    private Morphology morph;
 
     public Sherlock(String stopWordsFile) throws IOException, ClassNotFoundException {
         // creates a StanfordCoreNLP object, with POS tagging, lemmatization, NER, parsing, and coreference resolution
@@ -52,6 +56,12 @@ public class Sherlock {
                                Util.pairOf("where", Util.setOf("LOCATION", "ORGANIZATION")),
                                Util.pairOf("when", Util.setOf("DATE", "TIME")),
                                Util.pairOf("how", Util.setOf("MONEY", "PERCENT"))); // TODO: Change this to how much
+
+        monthNames = makePhrases(Util.setOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"));
+        days = makePhrases(Util.setOf("today", "yesterday", "tomorrow"));
+        days.add(Util.listOf("last", "night"));
+
+        morph = new Morphology();
     }
 
 
@@ -118,10 +128,16 @@ public class Sherlock {
         int bestSize = 0;
         int bestIndex = -1;
         for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++) {
+            CoreMap sentence = getSentence(document, sentenceNum);
+
             // Gives you the score based on intersection after bagging
             double score = getPointsByBagging(document, sentenceNum, question);
 
+            score += getPointsByQuestionType(question, sentence);
+
             int sentenceSize = replaceCorefMentions(document, sentenceNum).size();
+            // TODO: Implement rules for WHO and WHAT
+
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
             // For now prefer shorter sentences
             if(score > bestScore ||
@@ -158,6 +174,77 @@ public class Sherlock {
         return verbIntersection.size()*verbWeight + notVerbIntersection.size();
     }
 
+    private double getPointsByQuestionType(CoreMap question, CoreMap sentence){
+        double points = 0;
+        // TODO: Change this to figure out question type more smartly
+        String questionType = getTokens(question).get(0).word().toLowerCase();
+        if(questionType.equals("what"))
+            return getPointsForWhat(question, sentence);
+        else if(questionType.equals("who"))
+            return getPointsForWho(question, sentence);
+        else if(questionType.equals("where"))
+            return getPointsForWhere(question, sentence);
+
+        return points;
+    }
+
+
+
+    private int getPointsForWhat(CoreMap question, CoreMap sentence){
+        int score = 0;
+
+        // If question contains month AND sentence contains today, yesterday, tomorrow, or last night, then it's a clue
+        if(sentenceContainsAny(monthNames, question) && sentenceContainsAny(days, sentence)){
+            score += clue;
+        }
+
+        // If question contains kind AND sentence contains call or from, then it's a good clue
+        if(sentenceContainsAny(Util.setOf(Util.listOf("kind")), question)
+                && sentenceContainsAny(makePhrases(Util.setOf("call", "from")), sentence))
+            score += good_clue;
+
+        // If question contains name AND sentence contains name, call, or known, then it's a slam dunk
+        if(sentenceContainsAny(Util.setOf(Util.listOf("name")), question)
+                && sentenceContainsAny(makePhrases(Util.setOf("name", "call", "from")), sentence))
+            score += slam_dunk;
+
+        // If question contains name+PP AND sentence contains proper noun AND proper noun contains head(PP), then it's a slam dunk
+        // TODO: Finish this if
+
+        return score;
+    }
+
+    private double getPointsForWho(CoreMap question, CoreMap sentence){
+        // If question doesn't contain NAME AND sentence contains NAME, then we're confident
+
+        // If question doesn't contain NAME AND sentence contains name, then it's a good clue
+
+        // If sentence contains NAME or HUMAN, then it's a good clue
+
+        return 0;
+    }
+
+    private double getPointsForWhere(CoreMap question, CoreMap sentence){
+        return 0;
+    }
+
+    private boolean sentenceContainsAny(Set<List<String>> phrases, CoreMap sentence){
+        List<String> tokens = getTokens(sentence).stream().map(CoreLabel::word).collect(Collectors.toList());
+
+        for(int tokenNum = 0; tokenNum < tokens.size(); tokenNum++){
+            for(List<String> phrase : phrases){
+                if(tokens.size() >= tokenNum + phrase.size() && tokens.subList(tokenNum, tokenNum+phrase.size()).equals(phrase))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Set<List<String>> makePhrases(Set<String> words){
+        return words.stream().map(Util::listOf).collect(Collectors.toSet());
+    }
+
     /**
      * Get the sentence at the index in the document
      * @param document All sentences
@@ -175,6 +262,10 @@ public class Sherlock {
      */
     private List<CoreLabel> getTokens(CoreMap annotatedSentence) {
         return annotatedSentence.get(CoreAnnotations.TokensAnnotation.class);
+    }
+
+    private String stem(CoreLabel word){
+        return morph.stem(word.word());
     }
 
     /**
@@ -274,9 +365,7 @@ public class Sherlock {
      * @return the bag of words
      */
     private Set<String> getBagOfWords(List<CoreLabel> sentence) {
-        Morphology morph = new Morphology();
-        Function<CoreLabel, String> stemmer = word -> morph.stem(word.word());
-        Set<String> bagOfWords = sentence.stream().map(stemmer).collect(Collectors.toSet());
+        Set<String> bagOfWords = sentence.stream().map(this::stem).collect(Collectors.toSet());
 
         // Remove all stop words from the bag
         bagOfWords.removeAll(stopWords);
