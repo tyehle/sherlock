@@ -62,7 +62,7 @@ public class Sherlock {
 
         locationPrepositions = Util.setOf("in", "at", "near", "inside"); // TODO: Make this list bigger
 
-        questionWords = Util.setOf("who", "where", "when", "what", "why", "how");
+        questionWords = Util.setOf("who", "whom", "whose", "which", "where", "when", "what", "why", "how");
 
         defaultAnswer = "";
 
@@ -70,6 +70,7 @@ public class Sherlock {
         // NER-TAGS: Location, Person, Organization, Money, Percent, Date, Time
         nerFilter = Util.mapOf(Util.pairOf("who", Util.setOf("PERSON", "ORGANIZATION")),
                                Util.pairOf("where", Util.setOf("LOCATION", "ORGANIZATION")),
+                               Util.pairOf("which", Util.setOf("LOCATION", "PERSON", "ORGANIZATION")),
                                Util.pairOf("when", Util.setOf("DATE", "TIME")),
                                Util.pairOf("how", Util.setOf("MONEY", "PERCENT"))); // TODO: Change this to how much
 
@@ -192,9 +193,13 @@ public class Sherlock {
             case "what":
                 return getPointsForWhat(document, sentenceNum, question);
             case "who":
+            case "whose":
+            case "whom":
                 return getPointsForWho(document, sentenceNum, question);
             case "where":
                 return getPointsForWhere(document, sentenceNum, question);
+            case "which":
+                return getPointsForWhich(document, sentenceNum, question);
             case "when":
                 return getPointsForWhen(document, sentenceNum, question);
             case "why":
@@ -203,7 +208,7 @@ public class Sherlock {
                 return getPointsForHow(document, sentenceNum, question);
             default:
                 //System.out.println("Question type not found: " + questionType);
-                return 0;
+                return getPointsByBagging(document, sentenceNum, question);
         }
     }
 
@@ -230,7 +235,7 @@ public class Sherlock {
 
         // If question contains name AND sentence contains name, call, or known, then it's a slam dunk
         if(sentenceContainsAny(Util.setOf(Util.listOf("name")), question)
-                && sentenceContainsAny(makePhrases(Util.setOf("name", "call", "from")), sentence))
+                && sentenceContainsAny(makePhrases(Util.setOf("name", "call", "known")), sentence))
             score += slam_dunk;
 
         // If question contains name+PP AND sentence contains proper noun AND proper noun contains head(PP), then it's a slam dunk
@@ -285,6 +290,12 @@ public class Sherlock {
         // If sentence contains LOCATION, confident
         if(containsNamedEntity(Util.setOf("LOCATION", "ORGANIZATION"), sentence))
             score += confident;
+
+        return score;
+    }
+
+    private double getPointsForWhich(Annotation document, int sentenceNum, CoreMap question) {
+        double score = getPointsByBagging(document, sentenceNum, question);
 
         return score;
     }
@@ -457,6 +468,8 @@ public class Sherlock {
      * @return The type of the question. This is usually the first word of the question, ie. Why.
      */
     private String getQuestionType(CoreMap question) {
+        //TODO: whom, whose, which
+
         Stream<String> words = getTokens(question).stream().map(word -> word.word().toLowerCase());
         Stream<String> askingWords = words.filter(questionWords::contains);
         Optional<String> firstAsk = askingWords.findFirst();
