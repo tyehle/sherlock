@@ -28,6 +28,7 @@ public class Sherlock {
     private final int clue = 3, good_clue = 4, confident = 6, slam_dunk = 20;
     // Size of our 'best' set
     private final int bestSetSizeWhy = 5;
+    private final double verbWeight = 2;
 
     private final Set<String> verbTags;
     private final Set<String> locationPrepositions;
@@ -36,7 +37,6 @@ public class Sherlock {
 
     private Map<String, Set<String>> nerFilter;
     private StanfordCoreNLP pipeline;
-    private double verbWeight;
     private Morphology morph;
 
     public Sherlock(String stopWordsFile) throws IOException, ClassNotFoundException {
@@ -50,15 +50,13 @@ public class Sherlock {
         props.setProperty("ner.useSUTime", "false");
         props.setProperty("ner.applyNumericClassifiers", "false");
 
-        verbWeight = 2; // TODO: DOOO SOME CV
-
         pipeline = new StanfordCoreNLP(props);
 
         this.stopWords = new HashSet<>(Util.readLines(stopWordsFile));
 
         this.verbTags = Util.setOf("VB", "VBD", "VBG", "VBN", "VBP", "VBZ");
 
-        locationPrepositions = Util.setOf("in", "at", "near", "inside"); // TODO: Make this list bigger
+        locationPrepositions = Util.setOf("in", "at", "near", "inside", "outside", "around");
 
         questionWords = Util.setOf("who", "whom", "whose", "which", "where", "when", "what", "why", "how");
 
@@ -68,7 +66,7 @@ public class Sherlock {
                                Util.pairOf("where", Util.setOf("LOCATION", "ORGANIZATION")),
                                Util.pairOf("which", Util.setOf("LOCATION", "PERSON", "ORGANIZATION")),
                                Util.pairOf("when", Util.setOf("DATE", "TIME")),
-                               Util.pairOf("how", Util.setOf("MONEY", "PERCENT"))); // TODO: Change this to how much
+                               Util.pairOf("how", Util.setOf("MONEY", "PERCENT")));
 
         monthNames = makePhrases(Util.setOf("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"));
         days = makePhrases(Util.setOf("today", "yesterday", "tomorrow"));
@@ -126,14 +124,15 @@ public class Sherlock {
         List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
 
         double bestScore = 0;
-        int bestSize = 0;
+        double bestSize = 0;
         int bestIndex = -1;
         for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++) {
             double score = getPointsByQuestionType(document, sentenceNum, question);
 
             int sentenceSize = replaceCorefMentions(document, sentenceNum).size();
-            // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
-            // For now prefer shorter sentences
+//            int sentenceSize = getTokens(getSentence(document, sentenceNum)).size();
+
+            // Prefer shorter sentences
             if(score > bestScore ||
                     (score == bestScore && sentenceSize < bestSize)) {
                 bestIndex = sentenceNum;
@@ -158,7 +157,9 @@ public class Sherlock {
         Set<String> questionBag = getBagOfWords(tokensCopy);
 
         // Split into lists of verbs and not verbs
+
         Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(replaceCorefMentions(document, sentenceNum));
+//        Util.Pair<List<CoreLabel>, List<CoreLabel>> verbNotVerb = getVerbsAndNotVerbs(getTokens(getSentence(document, sentenceNum)));
 
         // Weigh the verbs higher than words that are not verbs, as per Ellen's paper
         Set<String> verbIntersection = getBagOfWords(verbNotVerb.first());
@@ -226,7 +227,7 @@ public class Sherlock {
         // If question contains name AND sentence contains name, call, or known, then it's a slam dunk
         if(sentenceContainsAny(Util.setOf(Util.listOf("name")), question)
                 && sentenceContainsAny(makePhrases(Util.setOf("name", "call", "known")), sentence))
-            score += slam_dunk;
+            score += clue;
 
         // If question contains name+PP AND sentence contains proper noun AND proper noun contains head(PP), then it's a slam dunk
         // TODO: Finish this if
@@ -286,6 +287,13 @@ public class Sherlock {
 
     private double getPointsForWhich(Annotation document, int sentenceNum, CoreMap question) {
         double score = getPointsByBagging(document, sentenceNum, question);
+        CoreMap sentence = getSentence(document, sentenceNum);
+
+        if(containsNamedEntity(Util.setOf("PERSON", "ORGANIZATION"), sentence))
+            score += confident;
+
+        if(containsNamedEntity(Util.setOf("LOCATION"), sentence))
+            score += confident;
 
         return score;
     }
@@ -458,8 +466,6 @@ public class Sherlock {
      * @return The type of the question. This is usually the first word of the question, ie. Why.
      */
     private String getQuestionType(CoreMap question) {
-        //TODO: whom, whose, which
-
         Stream<String> words = getTokens(question).stream().map(word -> word.word().toLowerCase());
         Stream<String> askingWords = words.filter(questionWords::contains);
         Optional<String> firstAsk = askingWords.findFirst();
@@ -526,25 +532,6 @@ public class Sherlock {
 
             return output;
         }
-    }
-
-    // TODO: Maybe use this to try to find sentences that are coreferent with the question
-    /**
-     * Tells if some sentences contain coreferent items.
-     * @param document The document
-     * @param sentences The potentially coreferent sentences
-     * @return If the sentences all contained the same coreferent element
-     */
-    private boolean areCoreferent(Annotation document, int... sentences) {
-        Collection<CorefChain> chains = document.get(CorefCoreAnnotations.CorefChainAnnotation.class).values();
-        for(CorefChain chain : chains) {
-            List<Integer> sentenceNumbers = chain.getMentionsInTextualOrder().stream()
-                    .map(mention -> mention.sentNum - 1)
-                    .collect(Collectors.toList());
-            if(sentenceNumbers.containsAll(Arrays.asList(sentences)))
-                return true;
-        }
-        return false;
     }
 
     /**
