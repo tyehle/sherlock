@@ -288,7 +288,7 @@ public class Sherlock {
         double score = 0;
 
         if(sentenceContainsAny(makePhrases(Util.setOf("much", "many")), question) && containsNamedEntity(Util.setOf("MONEY", "PERCENT"), sentence))
-            score += good_clue;
+            score += confident;
 
         return score;
     }
