@@ -24,8 +24,6 @@ public class Sherlock {
     public final Set<String> stopWords;
     private final Set<String> questionWords;
 
-    private final String defaultAnswer;
-
     private final double baggingWeight = 3;
     private final int clue = 3, good_clue = 4, confident = 6, slam_dunk = 20;
     // Size of our 'best' set
@@ -63,8 +61,6 @@ public class Sherlock {
         locationPrepositions = Util.setOf("in", "at", "near", "inside"); // TODO: Make this list bigger
 
         questionWords = Util.setOf("who", "whom", "whose", "which", "where", "when", "what", "why", "how");
-
-        defaultAnswer = "";
 
         // build the ner filter
         // NER-TAGS: Location, Person, Organization, Money, Percent, Date, Time
@@ -109,15 +105,10 @@ public class Sherlock {
 
             int bestSentence = findBestSentence(annotatedQuestion, document);
 
-            if(bestSentence >= 0) {
-                // Might remove everything
-                List<CoreLabel> filtered = applyNERFilter(questionType, document, bestSentence);
+            // Might remove everything
+            List<CoreLabel> filtered = applyNERFilter(questionType, document, bestSentence);
 
-                questionAnswers.put(question, rebuildSentence(filtered));
-            }
-            else {
-                questionAnswers.put(question, defaultAnswer);
-            }
+            questionAnswers.put(question, rebuildSentence(filtered));
         }
 
         return questionAnswers;
@@ -138,7 +129,6 @@ public class Sherlock {
         int bestSize = 0;
         int bestIndex = -1;
         for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++) {
-
             double score = getPointsByQuestionType(document, sentenceNum, question);
 
             int sentenceSize = replaceCorefMentions(document, sentenceNum).size();
