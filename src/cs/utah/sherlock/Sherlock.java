@@ -23,6 +23,8 @@ public class Sherlock {
     public final Set<String> stopWords;
     private final Set<String> questionWords;
 
+    private final String defaultAnswer;
+
     private final double baggingWeight = 3;
     private final int clue = 3, good_clue = 4, confident = 6, slam_dunk = 20;
 
@@ -58,6 +60,8 @@ public class Sherlock {
         locationPrepositions = Util.setOf("in", "at", "near", "inside"); // TODO: Make this list bigger
 
         questionWords = Util.setOf("who", "where", "when", "what", "why", "how");
+
+        defaultAnswer = "";
 
         // build the ner filter
         // NER-TAGS: Location, Person, Organization, Money, Percent, Date, Time
@@ -105,10 +109,15 @@ public class Sherlock {
 
             int bestSentence = findBestSentence(annotatedQuestion, document);
 
-            // Might remove everything
-            List<CoreLabel> filtered = applyNERFilter(questionType, document, bestSentence);
+            if(bestSentence >= 0) {
+                // Might remove everything
+                List<CoreLabel> filtered = applyNERFilter(questionType, document, bestSentence);
 
-            questionAnswers.put(question, rebuildSentence(filtered));
+                questionAnswers.put(question, rebuildSentence(filtered));
+            }
+            else {
+                questionAnswers.put(question, defaultAnswer);
+            }
         }
 
         return questionAnswers;
@@ -255,14 +264,12 @@ public class Sherlock {
     }
 
     private double getPointsForWhen(Annotation document, int sentenceNum, CoreMap question) {
-        double score = 0;
+        double score = getPointsByBagging(document, sentenceNum, question);
         CoreMap sentence = getSentence(document, sentenceNum);
 
         // If sentence contains TIME, good_clue
-        if(containsNamedEntity(Util.setOf("DATE", "TIME"), sentence)) {
+        if(containsNamedEntity(Util.setOf("DATE", "TIME"), sentence))
             score += good_clue;
-            score += getPointsByBagging(document, sentenceNum, question);
-        }
 
         // If question contains "the last" AND sentence contains first, last, since, or ago, slam_dunk
         if(sentenceContainsAny(Util.setOf(Util.listOf("the", "last")), question) && sentenceContainsAny(makePhrases(Util.setOf("first", "last", "since", "ago")), sentence))
