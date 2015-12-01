@@ -565,6 +565,7 @@ public class Sherlock {
 
             out.append(originalWord);
             out.append(spaceAfter);
+            out.append(" ");
         }
 
         return out.toString();
