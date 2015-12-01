@@ -12,6 +12,7 @@ import edu.stanford.nlp.util.CoreMap;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -25,6 +26,8 @@ public class Sherlock {
 
     private final double baggingWeight = 3;
     private final int clue = 3, good_clue = 4, confident = 6, slam_dunk = 20;
+    // Size of our 'best' set
+    private final int bestSetSizeWhy = 5;
 
     private final Set<String> verbTags;
     private final Set<String> locationPrepositions;
@@ -72,10 +75,6 @@ public class Sherlock {
 
         morph = new Morphology();
     }
-
-
-    // TODO: Get wordnet, use it to semantic classification of the head noun in each NP
-    // TODO: Implement Ellen's rules for different question types
 
     /**
      * Answers the the questions about a story.
@@ -170,6 +169,13 @@ public class Sherlock {
         return baggingWeight*(verbIntersection.size()*verbWeight + notVerbIntersection.size());
     }
 
+    /**
+     * Checks question type and calls the appropriate point generating function
+     * @param document All sentences
+     * @param sentenceNum The sentence to consider
+     * @param question The question to consider
+     * @return points for the sentence according to the type of question
+     */
     private double getPointsByQuestionType(Annotation document, int sentenceNum, CoreMap question){
         String questionType = getQuestionType(question);
 
@@ -192,7 +198,13 @@ public class Sherlock {
         }
     }
 
-
+    /**
+     * Checks what sort of 'what' question it is, checks if the sentence matches and assigns points accordingly
+     * @param document All sentences
+     * @param sentenceNum The sentence to consider
+     * @param question The question to consider
+     * @return points for what
+     */
     private double getPointsForWhat(Annotation document, int sentenceNum, CoreMap question) {
         double score = getPointsByBagging(document, sentenceNum, question);
         CoreMap sentence = getSentence(document, sentenceNum);
@@ -218,6 +230,13 @@ public class Sherlock {
         return score;
     }
 
+    /**
+     * Checks person information in sentence and question and and assigns points accordingly
+     * @param document All sentences
+     * @param sentenceNum The sentence to consider
+     * @param question The question to consider
+     * @return points for who
+     */
     private double getPointsForWho(Annotation document, int sentenceNum, CoreMap question) {
         double score = getPointsByBagging(document, sentenceNum, question);
         CoreMap sentence = getSentence(document, sentenceNum);
@@ -239,6 +258,13 @@ public class Sherlock {
         return score;
     }
 
+    /**
+     * Check for location key words and locations to assign points to sentence
+     * @param document All sentences
+     * @param sentenceNum The sentence to consider
+     * @param question The question to consider
+     * @return points for where
+     */
     private double getPointsForWhere(Annotation document, int sentenceNum, CoreMap question) {
         double score = getPointsByBagging(document, sentenceNum, question);
         CoreMap sentence = getSentence(document, sentenceNum);
@@ -254,6 +280,13 @@ public class Sherlock {
         return score;
     }
 
+    /**
+     * Check time information to assign points to sentence
+     * @param document All sentences
+     * @param sentenceNum The sentence to consider
+     * @param question The question to consider
+     * @return points for when
+     */
     private double getPointsForWhen(Annotation document, int sentenceNum, CoreMap question) {
         double score = 0;
         CoreMap sentence = getSentence(document, sentenceNum);
@@ -275,20 +308,56 @@ public class Sherlock {
         return score;
     }
 
+    /**
+     * Gets the n best words, then checks if sentence is in the best set/precedes best set/follows best set
+     * and assigns points accordingly
+     * @param document All sentences
+     * @param sentenceNum The sentence to consider
+     * @param question The question to consider
+     * @return points for why question
+     */
     private double getPointsForWhy(Annotation document, int sentenceNum, CoreMap question) {
         double score = getPointsByBagging(document, sentenceNum, question);
         CoreMap sentence = getSentence(document, sentenceNum);
 
-        // TODO: not really sure how to implement this with our current framework
+        // Get best
+        List<Util.Pair<Integer, Double>> scores = IntStream.range(0, document.get(CoreAnnotations.SectionAnnotation.class).length()).boxed()
+                .map(i -> Util.pairOf(i, getPointsByBagging(document, i, question))).collect(Collectors.toList());
+
+        // Sort best to worst
+        scores.sort((left, right) -> left.second().compareTo(right.second()));
+
+        // Get the n best indices
+        Set<Integer> best = scores.stream().map(Util.Pair::first).limit(bestSetSizeWhy).collect(Collectors.toSet());
+
+        // If S is an element of BEST or precedes a member of best, clue
+        if(best.contains(sentenceNum) || best.contains(sentenceNum+1))
+            score += clue;
+
+        // If follows member of BEST, good clue
+        if(best.contains(sentenceNum-1))
+            score += good_clue;
+
+        // If S contains want, so, or because, then good clue
+        if(sentenceContainsAny(makePhrases(Util.setOf("want", "so", "because")), sentence))
+            score += good_clue;
 
         return score;
     }
 
+    /**
+     * Tobin's made up rule for how. If we have much or many, then sentences that contain money or percent are good
+     * @param document All sentences
+     * @param sentenceNum The sentence to consider
+     * @param question The question to consider
+     * @return points for how
+     */
     private double getPointsForHow(Annotation document, int sentenceNum, CoreMap question) {
         double score = getPointsByBagging(document, sentenceNum, question);
         CoreMap sentence = getSentence(document, sentenceNum);
 
-        if(sentenceContainsAny(makePhrases(Util.setOf("much", "many")), question) && containsNamedEntity(Util.setOf("MONEY", "PERCENT"), sentence))
+        if(sentenceContainsAny(makePhrases(Util.setOf("much", "many")), question)
+                && containsNamedEntity(Util.setOf("MONEY", "PERCENT"), sentence))
             score += confident;
 
         return score;
@@ -380,7 +449,6 @@ public class Sherlock {
      * @param question The question to look at
      * @return The type of the question. This is usually the first word of the question, ie. Why.
      */
-    // TODO: Change this to figure out question type more smartly
     private String getQuestionType(CoreMap question) {
         Stream<String> words = getTokens(question).stream().map(word -> word.word().toLowerCase());
         Stream<String> askingWords = words.filter(questionWords::contains);
