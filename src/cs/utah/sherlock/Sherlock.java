@@ -328,7 +328,7 @@ public class Sherlock {
         CoreMap sentence = getSentence(document, sentenceNum);
 
         // Get best
-        List<Util.Pair<Integer, Double>> scores = IntStream.range(0, document.get(CoreAnnotations.SectionAnnotation.class).length()).boxed()
+        List<Util.Pair<Integer, Double>> scores = IntStream.range(0, document.get(CoreAnnotations.SentencesAnnotation.class).size()).boxed()
                 .map(i -> Util.pairOf(i, getPointsByBagging(document, i, question))).collect(Collectors.toList());
 
         // Sort best to worst
