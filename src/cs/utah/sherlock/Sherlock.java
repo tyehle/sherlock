@@ -103,15 +103,12 @@ public class Sherlock {
 
             String questionType = getQuestionType(annotatedQuestion);
 
-            List<CoreLabel> bestSentence = findBestSentence(annotatedQuestion, document);
+            int bestSentence = findBestSentence(annotatedQuestion, document);
 
             // Might remove everything
-            List<CoreLabel> filtered = applyNERFilter(questionType, bestSentence);
+            List<CoreLabel> filtered = applyNERFilter(questionType, document, bestSentence);
 
-            // Best is not necessarily the whole sentence; it might be just people/organizations, depending on the question
-            List<CoreLabel> best = filtered.size() > 0 ? filtered : bestSentence;
-
-            questionAnswers.put(question, rebuildSentence(best));
+            questionAnswers.put(question, rebuildSentence(filtered));
         }
 
         return questionAnswers;
@@ -124,7 +121,7 @@ public class Sherlock {
      * @param document All the sentences in the document
      * @return The best sentence in the document
      */
-    private List<CoreLabel> findBestSentence(CoreMap question, Annotation document) {
+    private int findBestSentence(CoreMap question, Annotation document) {
 
         List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
 
@@ -150,8 +147,7 @@ public class Sherlock {
             }
         }
 
-//        return replaceCorefMentions(document, bestIndex);
-        return getTokens(getSentence(document, bestIndex));
+        return bestIndex;
     }
 
     /**
@@ -483,18 +479,25 @@ public class Sherlock {
     /**
      * Applies a filter to a sentence based on the NER tags of the tokens. Does nothing if the given key was not found.
      * @param key The key to use when looking for an NER filter
-     * @param sentence The sentence to filter
+     * @param document The whole document
+     * @param sentenceNumber The sentence to filter
      * @return All the words matching the allowed annotations, or the sentence if the key was not valid
      */
-    private List<CoreLabel> applyNERFilter(String key, List<CoreLabel> sentence) {
+    private List<CoreLabel> applyNERFilter(String key, Annotation document, int sentenceNumber) {
         if(nerFilter.containsKey(key)) {
-            return sentence.stream().filter(token -> {
-                String nerTag = token.get(CoreAnnotations.NamedEntityTagAnnotation.class);
-                return nerFilter.get(key).contains(nerTag);
-            }).collect(Collectors.toList());
+            List<CoreLabel> original = getTokens(getSentence(document, sentenceNumber)).stream()
+                    .filter(token -> {
+                        String nerTag = token.get(CoreAnnotations.NamedEntityTagAnnotation.class);
+                        return nerFilter.get(key).contains(nerTag);
+                    }).collect(Collectors.toList());
+
+            if(original.isEmpty())
+                return getTokens(getSentence(document, sentenceNumber));
+            else
+                return original;
         }
         else {
-            return sentence;
+            return getTokens(getSentence(document, sentenceNumber));
         }
     }
 
