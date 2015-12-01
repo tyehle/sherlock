@@ -129,12 +129,7 @@ public class Sherlock {
         int bestSize = 0;
         int bestIndex = -1;
         for(int sentenceNum = 0; sentenceNum < sentences.size(); sentenceNum++) {
-            CoreMap sentence = getSentence(document, sentenceNum);
-
-            // Gives you the score based on intersection after bagging
-            double score = getPointsByBagging(document, sentenceNum, question);
-
-            score += getPointsByQuestionType(question, sentence);
+            double score = getPointsByQuestionType(document, sentenceNum, question);
 
             int sentenceSize = replaceCorefMentions(document, sentenceNum).size();
             // TODO: If the sizes are the same, prefer sentences earlier in the document and with longer words.
@@ -174,31 +169,32 @@ public class Sherlock {
         return baggingWeight*(verbIntersection.size()*verbWeight + notVerbIntersection.size());
     }
 
-    private double getPointsByQuestionType(CoreMap question, CoreMap sentence){
+    private double getPointsByQuestionType(Annotation document, int sentenceNum, CoreMap question){
         String questionType = getQuestionType(question);
 
         switch (questionType) {
             case "what":
-                return getPointsForWhat(question, sentence);
+                return getPointsForWhat(document, sentenceNum, question);
             case "who":
-                return getPointsForWho(question, sentence);
+                return getPointsForWho(document, sentenceNum, question);
             case "where":
-                return getPointsForWhere(question, sentence);
+                return getPointsForWhere(document, sentenceNum, question);
             case "when":
-                return getPointsForWhen(question, sentence);
+                return getPointsForWhen(document, sentenceNum, question);
             case "why":
-                return getPointsForWhy(question, sentence);
+                return getPointsForWhy(document, sentenceNum, question);
             case "how":
-                return getPointsForHow(question, sentence);
+                return getPointsForHow(document, sentenceNum, question);
             default:
                 //System.out.println("Question type not found: " + questionType);
-                return 0;
+                return getPointsByBagging(document, sentenceNum, question);
         }
     }
 
 
-    private int getPointsForWhat(CoreMap question, CoreMap sentence){
-        int score = 0;
+    private double getPointsForWhat(Annotation document, int sentenceNum, CoreMap question) {
+        double score = getPointsByBagging(document, sentenceNum, question);
+        CoreMap sentence = getSentence(document, sentenceNum);
 
         // If question contains month AND sentence contains today, yesterday, tomorrow, or last night, then it's a clue
         if(sentenceContainsAny(monthNames, question) && sentenceContainsAny(days, sentence)){
@@ -221,8 +217,10 @@ public class Sherlock {
         return score;
     }
 
-    private int getPointsForWho(CoreMap question, CoreMap sentence){
-        int score = 0;
+    private double getPointsForWho(Annotation document, int sentenceNum, CoreMap question) {
+        double score = getPointsByBagging(document, sentenceNum, question);
+        CoreMap sentence = getSentence(document, sentenceNum);
+
         // If question doesn't contain NAME AND sentence contains NAME, then we're confident
         if(!containsNamedEntity(Util.setOf("PERSON", "ORGANIZATION"), question)
                 && containsNamedEntity(Util.setOf("PERSON", "ORGANIZATION"), sentence))
@@ -240,8 +238,9 @@ public class Sherlock {
         return score;
     }
 
-    private double getPointsForWhere(CoreMap question, CoreMap sentence){
-        int score = 0;
+    private double getPointsForWhere(Annotation document, int sentenceNum, CoreMap question) {
+        double score = getPointsByBagging(document, sentenceNum, question);
+        CoreMap sentence = getSentence(document, sentenceNum);
 
         // If sentence contains LocationPrep, good clue
         if(sentenceContainsAny(makePhrases(locationPrepositions), sentence))
@@ -254,8 +253,9 @@ public class Sherlock {
         return score;
     }
 
-    private double getPointsForWhen(CoreMap question, CoreMap sentence){
-        int score = 0;
+    private double getPointsForWhen(Annotation document, int sentenceNum, CoreMap question) {
+        double score = getPointsByBagging(document, sentenceNum, question);
+        CoreMap sentence = getSentence(document, sentenceNum);
 
         // If sentence contains TIME, good_clue
         if(containsNamedEntity(Util.setOf("DATE", "TIME"), sentence))
@@ -272,16 +272,18 @@ public class Sherlock {
         return score;
     }
 
-    private double getPointsForWhy(CoreMap question, CoreMap sentence){
-        int score = 0;
+    private double getPointsForWhy(Annotation document, int sentenceNum, CoreMap question) {
+        double score = getPointsByBagging(document, sentenceNum, question);
+        CoreMap sentence = getSentence(document, sentenceNum);
 
         // TODO: not really sure how to implement this with our current framework
 
         return score;
     }
 
-    private double getPointsForHow(CoreMap question, CoreMap sentence) {
-        double score = 0;
+    private double getPointsForHow(Annotation document, int sentenceNum, CoreMap question) {
+        double score = getPointsByBagging(document, sentenceNum, question);
+        CoreMap sentence = getSentence(document, sentenceNum);
 
         if(sentenceContainsAny(makePhrases(Util.setOf("much", "many")), question) && containsNamedEntity(Util.setOf("MONEY", "PERCENT"), sentence))
             score += confident;
