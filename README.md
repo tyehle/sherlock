@@ -1,13 +1,13 @@
-to build
+To Build
 --------
-$ make
+`$ make`
 
 
-to run
+To Run
 ------
-$ ./run.sh <manifest-file>
+`$ ./run.sh <manifest-file>`
 
 
-testing
+Testing
 -------
-This was tested on lab1-19.eng.utah.edu
+This was tested on CADE machine `lab1-19.eng.utah.edu`
