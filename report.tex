@@ -1,4 +1,4 @@
-\documentclass[twoside,11pt]{article}
+\documentclass[twoside,12pt]{article}
 \usepackage{moreverb}
 \usepackage{amsmath}
 \DeclareMathOperator*{\argmin}{\arg\!\min}
@@ -13,8 +13,6 @@
  colorlinks=true,
  urlcolor=blue
 }
-
-\setlength{\headsep}{5pt}
 
 \pagenumbering{gobble}
 
@@ -39,31 +37,30 @@
 
 \begin{document}
 \date{\due}
-\title{\class{} \name \vspace{-0.2cm}}
+\title{\class{} \name }
 \author{ Tobin Yehle and Dasha Pruss}
 \maketitle
-\vspace{-1.3cm}
 
 
-\section{Components}
+\section{Components and Contributions}
 
-All of our relevant source code is inside of \code{Sherlock.java}. We have a main method inside of \code{Driver.java}, which does all the IO and data wrangling. We made some data structures for storing Stories and Questions, which are inside of \code{Story.java}, which contains a private Question class as well. Most of this code was auto-generated (equals, toString, etc.).
+All of the NLP code is in \code{Sherlock.java}. We have a \code{main} method inside of \code{Driver.java}, which does all the IO and data wrangling. We made some data structures for storing stories, which are in \code{Story.java}. Most of this code was auto-generated (\code{equals}, \code{toString}, etc.).
 
-Our \code{Sherlock.java} file contains a single public function, processStory, which calls the numerous private methods that we wrote. Our code is very well documented, so if you'd like to read about the specifics of our inner-workings, you can check out our documentation. For instance, the function findBestSentence searches through the sentences in the story and finds the best sentence points-wise for the given question.
+Our \code{Sherlock.java} file contains a single public function, \code{processStory}, which calls the numerous private methods that we wrote to first find the best sentence in the document, and then extract key phrases from that sentence.
 
-\section{Team Member Contributions}
-We pair programmed our entire project; each of us spent roughly equal time programming. If you would like to see the specifics of who edited what, feel free to browse the commit history of our project in our  \href{https://bitbucket.org/tobinyehle/sherlock/commits/all}{bit bucket repository}. To see who last edited each line of each file you can take a look at \href{https://bitbucket.org/tobinyehle/sherlock/annotate/e57a8467bc90e614b13ca2c99f0b5d681baa65c9/src/cs/utah/sherlock/Sherlock.java?at=default&fileviewer=file-view-default}{blame}.
+We pair programmed our entire project and each of us spent roughly equal time programming. The only file of real substance was \code{Sherlock.java}, and it underwent many changes. If you would like to see the specifics of who edited what, feel free to browse the commit history of our project in our
+\href{https://bitbucket.org/tobinyehle/sherlock/commits/all}{bit bucket repository}. Generally the name on the commit was the person typing, while the other team member dished out advice.
+To see who last edited each line of a file you can take a look at
+\href{https://bitbucket.org/tobinyehle/sherlock/annotate/e57a8467bc90e614b13ca2c99f0b5d681baa65c9/src/cs/utah/sherlock/Sherlock.java?at=default&fileviewer=file-view-default}{blame}.
 
 \section{External Resources}
 
-We used Stanford's CoreNLP libraries for all of our needs (tokenization, sentence splitting, part-of-speech tagging, NER, parsing, and coreference resolution).
+We used Stanford's CoreNLP libraries for tokenization, sentence splitting, part-of-speech tagging, NER, parsing, and coreference resolution. We used their models that were trained with news article corpora, such as CoNLL.
 
-\section{Regrets}
+\section{Regrets and Successes}
 
-We regret spending so much of our time trying to get co-reference resolution to work because it ended up not helping us at all --- in fact, it made our f-score worse. We also wish that we had had time to use WordNet to find semantic classes our of noun phrases, as well as using it to find verb synonyms.
+We regret spending so much of our time trying to get co-reference resolution to work because it ended up not helping us at all --- in fact, it made our f-score worse. Instead of spending our time on coreference, we wish we had used WordNet to find semantic classes our of noun phrases to improve our phrase extraction procedure.
 
-\section{Successes}
-
-The rules that we built, both from the Quarc paper as well as our own original rules, were highly effective at identifying the correct sentence. We were also happy with the way we extracted phrases from the sentences --- it was a very simple approach, but surprisingly effective.
+The rules that we implemented, both from the Quarc paper as well as our own rules, were highly effective at identifying the correct sentence. We were also happy with the way we extracted phrases from the sentences --- it was a very simple approach, but surprisingly effective.
 
 \end{document}
