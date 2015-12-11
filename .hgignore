@@ -1,4 +1,4 @@
-sytax: blob
+syntax: glob
 
 .idea/*
 out/*
@@ -6,3 +6,8 @@ sherlock.iml
 
 ner-models/*
 parser-models/*
+
+*.synctex.gz
+*.log
+*.out
+*.aux
