@@ -17,6 +17,7 @@
 \newcommand{\class}{NLP}
 \newcommand{\name}{Final Project Report}
 \newcommand{\due}{December 10, 2015}
+\newcommand{\code}[1]{\texttt{#1}}
 
 \newenvironment{solution}
 {\begin{framed} \textbf{Solution:}\par}
@@ -33,7 +34,7 @@
 }
 
 \begin{document}
-\date{Due Date: \due}
+\date{\due}
 \title{\class{} \name}
 \author{ Tobin Yehle and Dasha Pruss }
 \maketitle
@@ -41,7 +42,9 @@
 
 \section{Components}
 
+All of our relevant source code is inside of \code{Sherlock.java}. We have a main method inside of \code{Driver.java}, which does all the IO and data wrangling. We made some data structures for storing Stories and Questions, which are inside of \code{Story.java}, which contains a private Question class as well. Most of this code was auto-generated (equals, toString, etc.).
 
+Our \code{Sherlock.java} file contains a single public function, processStory, which calls the numerous private methods that we wrote. Our code is very well documented, so if you'd like to read about the specifics of our inner-workings, you can check out our documentation. For instance, the function findBestSentence searches through the sentences in the story and finds the best sentence points-wise for the given question.
 
 \section{Team Member Contributions}
 We pair programmed all of it. If you really want to know what we did feel free to browse the commit history of the project at the \href{https://bitbucket.org/tobinyehle/sherlock}{bit bucket repository}. To see who last edited each line of each file you can take a look at \href{https://bitbucket.org/tobinyehle/sherlock/annotate/e57a8467bc90e614b13ca2c99f0b5d681baa65c9/src/cs/utah/sherlock/Sherlock.java?at=default&fileviewer=file-view-default}{blame}.
@@ -49,9 +52,14 @@ We pair programmed all of it. If you really want to know what we did feel free t
 
 \section{External Resources}
 
+We used Stanford's CoreNLP libraries for all of our needs (tokenization, sentence splitting, part-of-speech tagging, NER, parsing, and coreference resolution).
+
 \section{Regrets}
+
+We regret spending so much of our time trying to get co-reference resolution to work because it ended up not helping us at all --- in fact, it made our f-score worse. We also wish that we had had time to use WordNet to find semantic classes our of noun phrases, as well as using it to find verb synonyms.
 
 \section{Successes}
 
+The rules that we built, both from the Quarc paper as well as our own original rules, were highly effective at identifying the correct sentence. We were also happy with the way we extracted phrases from the sentences --- it was a very simple approach, but surprisingly effective.
 
 \end{document}
