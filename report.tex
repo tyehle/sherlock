@@ -1,4 +1,4 @@
-\documentclass[twoside,12pt]{article}
+\documentclass[twoside,11pt]{article}
 \usepackage{moreverb}
 \usepackage{amsmath}
 \DeclareMathOperator*{\argmin}{\arg\!\min}
@@ -13,6 +13,10 @@
  colorlinks=true,
  urlcolor=blue
 }
+
+\setlength{\headsep}{5pt}
+
+\pagenumbering{gobble}
 
 \newcommand{\class}{NLP}
 \newcommand{\name}{Final Project Report}
@@ -35,9 +39,10 @@
 
 \begin{document}
 \date{\due}
-\title{\class{} \name}
-\author{ Tobin Yehle and Dasha Pruss }
+\title{\class{} \name \vspace{-0.2cm}}
+\author{ Tobin Yehle and Dasha Pruss}
 \maketitle
+\vspace{-1.3cm}
 
 
 \section{Components}
@@ -47,8 +52,7 @@ All of our relevant source code is inside of \code{Sherlock.java}. We have a mai
 Our \code{Sherlock.java} file contains a single public function, processStory, which calls the numerous private methods that we wrote. Our code is very well documented, so if you'd like to read about the specifics of our inner-workings, you can check out our documentation. For instance, the function findBestSentence searches through the sentences in the story and finds the best sentence points-wise for the given question.
 
 \section{Team Member Contributions}
-We pair programmed all of it. If you really want to know what we did feel free to browse the commit history of the project at the \href{https://bitbucket.org/tobinyehle/sherlock}{bit bucket repository}. To see who last edited each line of each file you can take a look at \href{https://bitbucket.org/tobinyehle/sherlock/annotate/e57a8467bc90e614b13ca2c99f0b5d681baa65c9/src/cs/utah/sherlock/Sherlock.java?at=default&fileviewer=file-view-default}{blame}.
-
+We pair programmed our entire project; each of us spent roughly equal time programming. If you would like to see the specifics of who edited what, feel free to browse the commit history of our project in our  \href{https://bitbucket.org/tobinyehle/sherlock/commits/all}{bit bucket repository}. To see who last edited each line of each file you can take a look at \href{https://bitbucket.org/tobinyehle/sherlock/annotate/e57a8467bc90e614b13ca2c99f0b5d681baa65c9/src/cs/utah/sherlock/Sherlock.java?at=default&fileviewer=file-view-default}{blame}.
 
 \section{External Resources}
 
